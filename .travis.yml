@@ -1,0 +1,17 @@
+sudo: false
+dist: trusty
+language: go
+go:
+  - "1.11"
+install:
+  - export GOMETALINTER_VERSION="v2.0.10"
+  - curl https://raw.githubusercontent.com/alecthomas/gometalinter/$GOMETALINTER_VERSION/scripts/install.sh > install.sh
+  - chmod +x ./install.sh
+  - ./install.sh -b $GOPATH/bin -d $GOMETALINTER_VERSION
+  - curl https://raw.githubusercontent.com/golang/dep/v0.5.0/install.sh | sh
+  - dep ensure -vendor-only
+script:
+  - ci/lint.sh
+  - go test -v ./...
+notifications:
+  email: false
