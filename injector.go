@@ -73,6 +73,10 @@ func (self *Injector) getCached(key providerKey) (providedValue interface{}, err
 	return self.get(key)
 }
 
+type lazyProviderError struct {
+	cause error
+}
+
 func (self *Injector) get(key providerKey) (interface{}, error) {
 	provider, ok := self.providers.providers[key]
 	if !ok {
@@ -81,16 +85,31 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 
 	arguments := make([]reflect.Value, len(provider.arguments)*2)
 	for index, argumentKey := range provider.arguments {
-		argument, err := self.getCached(argumentKey)
-		if err != nil {
-			return nil, provideError{key: key, cause: err}
+		offset := index * 2
+		if lazyArgumentType := getLazyArgumentType(argumentKey); lazyArgumentType != nil {
+			strictArgumentKey := providerKey{valueType: lazyArgumentType, annotationType: argumentKey.annotationType}
+			arguments[offset] = reflect.MakeFunc(argumentKey.valueType, func(_ []reflect.Value) []reflect.Value {
+				result, err := self.getCached(strictArgumentKey)
+				if err != nil {
+					panic(lazyProviderError{cause: err})
+				}
+				return []reflect.Value{reflect.ValueOf(result)}
+			})
+		} else {
+			argument, err := self.getCached(argumentKey)
+			if err != nil {
+				return nil, provideError{key: key, cause: err}
+			}
+			arguments[offset] = getValueForArgument(argument, argumentKey.valueType)
 		}
-
-		arguments[index*2] = getValueForArgument(argument, argumentKey.valueType)
-		arguments[index*2+1] = reflect.Zero(argumentKey.annotationType)
+		arguments[offset+1] = reflect.Zero(argumentKey.annotationType)
 	}
 
-	outputs := provider.provider.Call(arguments)
+	outputs, err := callProviderhandlingLazyErrors(provider.provider, arguments)
+	if err != nil {
+		return nil, provideError{key: key, cause: err}
+	}
+
 	output := outputs[0].Interface()
 	if !provider.hasError {
 		return output, nil
@@ -101,6 +120,32 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 	} else {
 		return output, nil
 	}
+}
+
+func callProviderhandlingLazyErrors(
+	provider reflect.Value,
+	arguments []reflect.Value,
+) (result []reflect.Value, resultingErr error) {
+	defer func() {
+		if err := recover(); err != nil {
+			if err, ok := err.(lazyProviderError); ok {
+				resultingErr = err.cause
+			} else {
+				panic(err)
+			}
+		}
+	}()
+	return provider.Call(arguments), nil
+}
+
+func getLazyArgumentType(key providerKey) reflect.Type {
+	if key.valueType.Kind() != reflect.Func {
+		return nil
+	}
+	if key.valueType.NumOut() != 1 {
+		return nil
+	}
+	return key.valueType.Out(0)
 }
 
 func getValueForArgument(argument interface{}, valueType reflect.Type) reflect.Value {

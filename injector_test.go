@@ -93,6 +93,135 @@ func (self *InjectorTests) TestGetNil() {
 	self.Nil(value)
 }
 
+func (self *InjectorTests) TestGetLazy() {
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1) {
+					return testValue, Annotation1{}
+				}),
+				arguments: []providerKey{},
+				hasError:  false,
+			},
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
+					return value(), Annotation2{}
+				}),
+				arguments: []providerKey{{
+					valueType:      reflect.TypeOf(func() int { return 0 }),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}},
+				hasError: false,
+			},
+		},
+	})
+	value := self.getInt(Annotation2{})
+	self.Equal(testValue, value)
+}
+
+func (self *InjectorTests) TestGetLazyNil() {
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf((*int)(nil)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (*int, Annotation1) {
+					return nil, Annotation1{}
+				}),
+				arguments: []providerKey{},
+				hasError:  false,
+			},
+			{
+				valueType:      reflect.TypeOf((*int)(nil)),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				provider: reflect.ValueOf(func(value func() *int, _ Annotation1) (*int, Annotation2) {
+					return value(), Annotation2{}
+				}),
+				arguments: []providerKey{{
+					valueType:      reflect.TypeOf(func() *int { return nil }),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}},
+				hasError: false,
+			},
+		},
+	})
+	self.Nil(self.getIntPtr(Annotation2{}))
+}
+
+func (self *InjectorTests) TestGetLazyError() {
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1, error) {
+					return 0, Annotation1{}, testError
+				}),
+				arguments: []providerKey{},
+				hasError:  true,
+			},
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
+					return value(), Annotation2{}
+				}),
+				arguments: []providerKey{{
+					valueType:      reflect.TypeOf(func() int { return 0 }),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}},
+				hasError: false,
+			},
+		},
+	})
+	_, err := self.injector.Get(new(int), Annotation2{})
+	self.Equal(testError, err.(provideError).cause.(provideError).cause)
+}
+
+func (self *InjectorTests) TestGetLazyDoesNotCallProviderUntilRequested() {
+	calledLazyProvider := false
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1) {
+					calledLazyProvider = true
+					return testValue, Annotation1{}
+				}),
+				arguments: []providerKey{},
+				hasError:  false,
+			},
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
+					return 1, Annotation2{}
+				}),
+				arguments: []providerKey{{
+					valueType:      reflect.TypeOf(func() int { return 0 }),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}},
+				hasError: false,
+			},
+		},
+	})
+	_ = self.getInt(Annotation2{})
+	self.False(calledLazyProvider)
+}
+
 func (self *InjectorTests) TestCachedGet() {
 	counter := testValue
 	self.initInjector(&providersData{
@@ -115,6 +244,43 @@ func (self *InjectorTests) TestCachedGet() {
 	})
 	self.Equal(testValue, self.getInt(Annotation1{}))
 	self.Equal(testValue, self.getInt(Annotation1{}))
+}
+
+func (self *InjectorTests) TestGetLazyCached() {
+	counter := testValue
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1) {
+					defer func() {
+						counter += 1
+					}()
+					return counter, Annotation1{}
+				}),
+				arguments: []providerKey{},
+				hasError:  false,
+				cached:    true,
+			},
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
+					return value(), Annotation2{}
+				}),
+				arguments: []providerKey{{
+					valueType:      reflect.TypeOf(func() int { return 0 }),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}},
+				hasError: false,
+			},
+		},
+	})
+	self.Equal(testValue, self.getInt(Annotation2{}))
+	self.Equal(testValue, self.getInt(Annotation2{}))
 }
 
 func (self *InjectorTests) TestErrorGet() {
