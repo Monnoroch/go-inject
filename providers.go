@@ -78,8 +78,9 @@ func buildModuleProvidersForLeafModule(module Module) (*moduleProvidersData, err
 	moduleType := moduleValue.Type()
 	for methodIndex := 0; methodIndex < moduleValue.NumMethod(); methodIndex += 1 {
 		method := moduleValue.Method(methodIndex)
-		if !isProvider(method, moduleType.Method(methodIndex)) &&
-			!isProviderWithError(method) {
+		methodDefinition := moduleType.Method(methodIndex)
+		if !isProvider(method, methodDefinition) &&
+			!isProviderWithError(method, methodDefinition) {
 			return nil, fmt.Errorf(
 				"%#v is not a module: it has an invalid provider %#v.",
 				module, method)
@@ -132,7 +133,11 @@ func isProvider(method reflect.Value, methodDefinition reflect.Method) bool {
 	return hasAnnotationOutput(methodType) && hasInputsWithAnnotations(methodType)
 }
 
-func isProviderWithError(method reflect.Value) bool {
+func isProviderWithError(method reflect.Value, methodDefinition reflect.Method) bool {
+	if !strings.HasPrefix(methodDefinition.Name, providerPrefix) {
+		return false
+	}
+
 	methodType := method.Type()
 	if methodType.NumOut() != 3 {
 		return false
