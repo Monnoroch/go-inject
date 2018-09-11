@@ -307,6 +307,31 @@ func (self *BuildProvidersTests) TestValidProvidersInDifferentModules() {
 	}, providers)
 }
 
+type testCachedProviderModule struct{}
+
+func (self testCachedProviderModule) ProvideCachedValue() (int32, int64) {
+	return 0, 0
+}
+
+func (self *BuildProvidersTests) TestCachedProvider() {
+	module := testCachedProviderModule{}
+	providers, err := buildProviders(module)
+	self.Require().Nil(err)
+	self.Equal(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int32(0)),
+				annotationType: reflect.TypeOf(int64(0)),
+			}: {
+				provider:  reflect.ValueOf(module).MethodByName("ProvideCachedValue"),
+				arguments: []providerKey{},
+				hasError:  false,
+				cached:    true,
+			},
+		},
+	}, providers)
+}
+
 func TestBuildProviders(t *testing.T) {
 	suite.Run(t, new(BuildProvidersTests))
 }

@@ -93,6 +93,30 @@ func (self *InjectorTests) TestGetNil() {
 	self.Nil(value)
 }
 
+func (self *InjectorTests) TestCachedGet() {
+	counter := testValue
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1) {
+					defer func() {
+						counter += 1
+					}()
+					return counter, Annotation1{}
+				}),
+				arguments: []providerKey{},
+				hasError:  false,
+				cached:    true,
+			},
+		},
+	})
+	self.Equal(testValue, self.getInt(Annotation1{}))
+	self.Equal(testValue, self.getInt(Annotation1{}))
+}
+
 func (self *InjectorTests) TestErrorGet() {
 	self.initInjector(&providersData{
 		providers: map[providerKey]providerData{
@@ -314,6 +338,7 @@ func (self *InjectorTests) getIntPtr(annotation Annotation) *int {
 func (self *InjectorTests) initInjector(providers *providersData) {
 	self.injector = &Injector{
 		providers: providers,
+		cache:     map[providerKey]valueErrorPair{},
 	}
 }
 

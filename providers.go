@@ -15,6 +15,7 @@ type providerData struct {
 	provider  reflect.Value
 	arguments []providerKey
 	hasError  bool
+	cached    bool
 }
 
 type providersData struct {
@@ -40,6 +41,7 @@ type internalProviderData struct {
 	arguments []providerKey
 	module    Module
 	hasError  bool
+	cached    bool
 }
 
 type moduleProvidersData struct {
@@ -65,10 +67,13 @@ func buildProvidersForLeafModule(module Module, providers *providersData) error 
 			provider:  provider.provider,
 			arguments: provider.arguments,
 			hasError:  provider.hasError,
+			cached:    provider.cached,
 		}
 	}
 	return nil
 }
+
+const cachedProviderPrefix = "ProvideCached"
 
 func buildModuleProvidersForLeafModule(module Module) (*moduleProvidersData, error) {
 	providers := moduleProvidersData{
@@ -111,6 +116,7 @@ func buildModuleProvidersForLeafModule(module Module) (*moduleProvidersData, err
 			provider:  method,
 			output:    key,
 			arguments: arguments,
+			cached:    strings.HasPrefix(methodDefinition.Name, cachedProviderPrefix),
 		}
 	}
 	return &providers, nil
