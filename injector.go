@@ -105,8 +105,7 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 		arguments[offset+1] = reflect.Zero(argumentKey.annotationType)
 	}
 
-	outputs, err := callProviderhandlingLazyErrors(provider.provider, arguments)
-	fmt.Println("~~~~~~~~ PT 1")
+	outputs, err := callProviderHandlingLazyErrors(provider.provider, arguments)
 	if err != nil {
 		return nil, provideError{key: key, cause: err}
 	}
@@ -123,16 +122,15 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 	}
 }
 
-func callProviderhandlingLazyErrors(
+func callProviderHandlingLazyErrors(
 	provider reflect.Value,
 	arguments []reflect.Value,
 ) (result []reflect.Value, resultingErr error) {
 	defer func() {
 		if err := recover(); err != nil {
-			if err, ok := err.(lazyProviderError); ok {
-				resultingErr = err.cause
+			if lazyProviderErr, ok := err.(lazyProviderError); ok {
+				resultingErr = lazyProviderErr.cause
 			} else {
-				fmt.Println("~~~~~~~ paniced")
 				panic(err)
 			}
 		}
