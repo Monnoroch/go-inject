@@ -106,6 +106,7 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 	}
 
 	outputs, err := callProviderhandlingLazyErrors(provider.provider, arguments)
+	fmt.Println("~~~~~~~~ PT 1")
 	if err != nil {
 		return nil, provideError{key: key, cause: err}
 	}
@@ -131,7 +132,7 @@ func callProviderhandlingLazyErrors(
 			if err, ok := err.(lazyProviderError); ok {
 				resultingErr = err.cause
 			} else {
-				// This panic indicates a bug in Injector code.
+				fmt.Println("~~~~~~~ paniced")
 				panic(err)
 			}
 		}

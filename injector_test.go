@@ -93,6 +93,65 @@ func (self *InjectorTests) TestGetNil() {
 	self.Nil(value)
 }
 
+func (self *InjectorTests) TestErrorGet() {
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1, error) {
+					return testValue, Annotation1{}, nil
+				}),
+				arguments: []providerKey{},
+				hasError:  true,
+			},
+		},
+	})
+	value := self.getInt(Annotation1{})
+	self.Equal(testValue, value)
+}
+
+func (self *InjectorTests) TestGetError() {
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1, error) {
+					return testValue, Annotation1{}, testError
+				}),
+				arguments: []providerKey{},
+				hasError:  true,
+			},
+		},
+	})
+	_, err := self.injector.Get((*int)(nil), Annotation1{})
+	self.Equal(testError, err.(provideError).cause)
+}
+
+func (self *InjectorTests) TestPanic() {
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1) {
+					panic(testError)
+					return 0, Annotation1{}
+				}),
+				arguments: []providerKey{},
+				hasError:  false,
+			},
+		},
+	})
+	self.PanicsWithValue(testError, func() {
+		self.getInt(Annotation1{})
+	})
+}
+
 func (self *InjectorTests) TestGetLazy() {
 	self.initInjector(&providersData{
 		providers: map[providerKey]providerData{
@@ -188,6 +247,40 @@ func (self *InjectorTests) TestGetLazyError() {
 	self.Equal(testError, err.(provideError).cause.(provideError).cause)
 }
 
+// func (self *InjectorTests) TestGetLazyPanic() {
+// 	self.initInjector(&providersData{
+// 		providers: map[providerKey]providerData{
+// 			{
+// 				valueType:      reflect.TypeOf(int(0)),
+// 				annotationType: reflect.TypeOf(Annotation1{}),
+// 			}: {
+// 				provider: reflect.ValueOf(func() (int, Annotation1) {
+// 					panic(testError)
+// 					return 0, Annotation1{}
+// 				}),
+// 				arguments: []providerKey{},
+// 				hasError:  false,
+// 			},
+// 			{
+// 				valueType:      reflect.TypeOf(int(0)),
+// 				annotationType: reflect.TypeOf(Annotation2{}),
+// 			}: {
+// 				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
+// 					return value(), Annotation2{}
+// 				}),
+// 				arguments: []providerKey{{
+// 					valueType:      reflect.TypeOf(func() int { return 0 }),
+// 					annotationType: reflect.TypeOf(Annotation1{}),
+// 				}},
+// 				hasError: false,
+// 			},
+// 		},
+// 	})
+// 	self.PanicsWithValue(testError, func() {
+// 		self.injector.Get(new(int), Annotation2{})
+// 	})
+// }
+
 func (self *InjectorTests) TestGetLazyDoesNotCallProviderUntilRequested() {
 	calledLazyProvider := false
 	self.initInjector(&providersData{
@@ -281,44 +374,6 @@ func (self *InjectorTests) TestGetLazyCached() {
 	})
 	self.Equal(testValue, self.getInt(Annotation2{}))
 	self.Equal(testValue, self.getInt(Annotation2{}))
-}
-
-func (self *InjectorTests) TestErrorGet() {
-	self.initInjector(&providersData{
-		providers: map[providerKey]providerData{
-			{
-				valueType:      reflect.TypeOf(int(0)),
-				annotationType: reflect.TypeOf(Annotation1{}),
-			}: {
-				provider: reflect.ValueOf(func() (int, Annotation1, error) {
-					return testValue, Annotation1{}, nil
-				}),
-				arguments: []providerKey{},
-				hasError:  true,
-			},
-		},
-	})
-	value := self.getInt(Annotation1{})
-	self.Equal(testValue, value)
-}
-
-func (self *InjectorTests) TestGetError() {
-	self.initInjector(&providersData{
-		providers: map[providerKey]providerData{
-			{
-				valueType:      reflect.TypeOf(int(0)),
-				annotationType: reflect.TypeOf(Annotation1{}),
-			}: {
-				provider: reflect.ValueOf(func() (int, Annotation1, error) {
-					return testValue, Annotation1{}, testError
-				}),
-				arguments: []providerKey{},
-				hasError:  true,
-			},
-		},
-	})
-	_, err := self.injector.Get((*int)(nil), Annotation1{})
-	self.Equal(testError, err.(provideError).cause)
 }
 
 func (self *InjectorTests) TestGetTransitive() {
