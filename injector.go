@@ -131,6 +131,7 @@ func callProviderhandlingLazyErrors(
 			if err, ok := err.(lazyProviderError); ok {
 				resultingErr = err.cause
 			} else {
+				// This panic indicates a bug in Injector code.
 				panic(err)
 			}
 		}
