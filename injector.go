@@ -4,11 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 )
 
 // Injector is a component for providing values exported by modules.
 type Injector struct {
 	providers *providersData
+	cacheLock sync.Mutex
+	cache     map[providerKey]valueErrorPair
+}
+
+type valueErrorPair struct {
+	value interface{}
+	err   error
 }
 
 // Create an injector from the list of modules.
@@ -20,6 +28,7 @@ func InjectorOf(modules ...Module) (*Injector, error) {
 
 	return &Injector{
 		providers: providers,
+		cache:     map[providerKey]valueErrorPair{},
 	}, nil
 }
 
@@ -40,6 +49,27 @@ func (self *Injector) Get(pointerToType interface{}, annotation Annotation) (int
 		valueType:      valueType,
 		annotationType: annotationType,
 	}
+	return self.getLocked(key)
+}
+
+func (self *Injector) getLocked(key providerKey) (interface{}, error) {
+	self.cacheLock.Lock()
+	defer self.cacheLock.Unlock()
+	return self.getCached(key)
+}
+
+func (self *Injector) getCached(key providerKey) (providedValue interface{}, err error) {
+	if provider, ok := self.providers.providers[key]; ok && provider.cached {
+		if value, ok := self.cache[key]; ok {
+			return value.value, value.err
+		}
+		defer func() {
+			self.cache[key] = valueErrorPair{
+				value: providedValue,
+				err:   err,
+			}
+		}()
+	}
 	return self.get(key)
 }
 
@@ -51,7 +81,7 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 
 	arguments := make([]reflect.Value, len(provider.arguments)*2)
 	for index, argumentKey := range provider.arguments {
-		argument, err := self.get(argumentKey)
+		argument, err := self.getCached(argumentKey)
 		if err != nil {
 			return nil, provideError{key: key, cause: err}
 		}
