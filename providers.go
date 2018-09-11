@@ -3,6 +3,7 @@ package inject
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type providerKey struct {
@@ -74,10 +75,12 @@ func buildModuleProvidersForLeafModule(module Module) (*moduleProvidersData, err
 		providers: map[providerKey]internalProviderData{},
 	}
 	moduleValue := reflect.ValueOf(module)
+	moduleType := moduleValue.Type()
 	for methodIndex := 0; methodIndex < moduleValue.NumMethod(); methodIndex += 1 {
 		method := moduleValue.Method(methodIndex)
-		if !isProvider(method) &&
-			!isProviderWithError(method) {
+		methodDefinition := moduleType.Method(methodIndex)
+		if !isProvider(method, methodDefinition) &&
+			!isProviderWithError(method, methodDefinition) {
 			return nil, fmt.Errorf(
 				"%#v is not a module: it has an invalid provider %#v.",
 				module, method)
@@ -116,7 +119,13 @@ func buildModuleProvidersForLeafModule(module Module) (*moduleProvidersData, err
 var globalAnnotationType = reflect.TypeOf((*Annotation)(nil)).Elem()
 var globalErrorType = reflect.TypeOf((*error)(nil)).Elem()
 
-func isProvider(method reflect.Value) bool {
+const providerPrefix = "Provide"
+
+func isProvider(method reflect.Value, methodDefinition reflect.Method) bool {
+	if !strings.HasPrefix(methodDefinition.Name, providerPrefix) {
+		return false
+	}
+
 	methodType := method.Type()
 	if methodType.NumOut() != 2 {
 		return false
@@ -124,7 +133,11 @@ func isProvider(method reflect.Value) bool {
 	return hasAnnotationOutput(methodType) && hasInputsWithAnnotations(methodType)
 }
 
-func isProviderWithError(method reflect.Value) bool {
+func isProviderWithError(method reflect.Value, methodDefinition reflect.Method) bool {
+	if !strings.HasPrefix(methodDefinition.Name, providerPrefix) {
+		return false
+	}
+
 	methodType := method.Type()
 	if methodType.NumOut() != 3 {
 		return false
