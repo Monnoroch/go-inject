@@ -140,7 +140,6 @@ func (self *InjectorTests) TestPanic() {
 			}: {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					panic(testError)
-					return 0, Annotation1{}
 				}),
 				arguments: []providerKey{},
 				hasError:  false,
@@ -336,7 +335,6 @@ func (self *InjectorTests) TestGetLazyPanic() {
 			}: {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					panic(testError)
-					return 0, Annotation1{}
 				}),
 				arguments: []providerKey{},
 				hasError:  false,
