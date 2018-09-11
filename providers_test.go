@@ -20,9 +20,18 @@ func (self *BuildProvidersTests) TestEmptyModule() {
 	}, providers)
 }
 
+type testBadMethodNameModule struct{}
+
+func (self testBadMethodNameModule) NotAProvider() {}
+
+func (self *BuildProvidersTests) TestBadMethodName() {
+	_, err := buildProviders(testBadMethodNameModule{})
+	self.Contains(err.Error(), "not a module")
+}
+
 type testNoResultMethodModule struct{}
 
-func (self testNoResultMethodModule) InvalidProvider() {}
+func (self testNoResultMethodModule) ProvideInvalid() {}
 
 func (self *BuildProvidersTests) TestNoResultMethod() {
 	_, err := buildProviders(testNoResultMethodModule{})
@@ -31,7 +40,7 @@ func (self *BuildProvidersTests) TestNoResultMethod() {
 
 type testNoAnnotationMethodModule struct{}
 
-func (self testNoAnnotationMethodModule) InvalidProvider() int {
+func (self testNoAnnotationMethodModule) ProvideInvalid() int {
 	return 0
 }
 
@@ -42,7 +51,7 @@ func (self *BuildProvidersTests) TestNoAnnotationMethod() {
 
 type testInvalidErrorTypeMethodModule struct{}
 
-func (self testInvalidErrorTypeMethodModule) InvalidProvider() (int, int, int) {
+func (self testInvalidErrorTypeMethodModule) ProvideInvalid() (int, int, int) {
 	return 0, 0, 0
 }
 
@@ -53,7 +62,7 @@ func (self *BuildProvidersTests) TestInvalidErrorTypeMethod() {
 
 type testArgumentWithoutAnnotationMethodModule struct{}
 
-func (self testArgumentWithoutAnnotationMethodModule) InvalidProvider(_ int) (int, int) {
+func (self testArgumentWithoutAnnotationMethodModule) ProvideInvalid(_ int) (int, int) {
 	return 0, 0
 }
 
@@ -64,11 +73,11 @@ func (self *BuildProvidersTests) TestArgumentWithoutAnnotationMethod() {
 
 type testSameProviderTwiceModule struct{}
 
-func (self testSameProviderTwiceModule) Provider1() (int, int) {
+func (self testSameProviderTwiceModule) Provide1() (int, int) {
 	return 0, 0
 }
 
-func (self testSameProviderTwiceModule) Provider2() (int, int) {
+func (self testSameProviderTwiceModule) Provide2() (int, int) {
 	return 0, 0
 }
 
@@ -79,13 +88,13 @@ func (self *BuildProvidersTests) TestSameProviderTwice() {
 
 type testSameProviderTwiceModule1 struct{}
 
-func (self testSameProviderTwiceModule1) Provider() (int, int) {
+func (self testSameProviderTwiceModule1) Provide() (int, int) {
 	return 0, 0
 }
 
 type testSameProviderTwiceModule2 struct{}
 
-func (self testSameProviderTwiceModule2) Provider() (int, int) {
+func (self testSameProviderTwiceModule2) Provide() (int, int) {
 	return 0, 0
 }
 
@@ -104,7 +113,7 @@ func (self *BuildProvidersTests) TestIdenticalProviderTwiceActossModules() {
 				valueType:      reflect.TypeOf(int(0)),
 				annotationType: reflect.TypeOf(int(0)),
 			}: {
-				provider:  reflect.ValueOf(module).MethodByName("Provider"),
+				provider:  reflect.ValueOf(module).MethodByName("Provide"),
 				arguments: []providerKey{},
 				hasError:  false,
 			},
@@ -114,7 +123,7 @@ func (self *BuildProvidersTests) TestIdenticalProviderTwiceActossModules() {
 
 type testValidProviderWithNoArgumentsModule struct{}
 
-func (self testValidProviderWithNoArgumentsModule) Provider() (int32, int64) {
+func (self testValidProviderWithNoArgumentsModule) Provide() (int32, int64) {
 	return 0, 0
 }
 
@@ -128,7 +137,7 @@ func (self *BuildProvidersTests) TestValidProviderWithNoArguments() {
 				valueType:      reflect.TypeOf(int32(0)),
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
-				provider:  reflect.ValueOf(module).MethodByName("Provider"),
+				provider:  reflect.ValueOf(module).MethodByName("Provide"),
 				arguments: []providerKey{},
 				hasError:  false,
 			},
@@ -138,7 +147,7 @@ func (self *BuildProvidersTests) TestValidProviderWithNoArguments() {
 
 type testValidProviderWithArgumentModule struct{}
 
-func (self testValidProviderWithArgumentModule) Provider(_ int32, _ bool) (int32, int64) {
+func (self testValidProviderWithArgumentModule) Provide(_ int32, _ bool) (int32, int64) {
 	return 0, 0
 }
 
@@ -152,7 +161,7 @@ func (self *BuildProvidersTests) TestValidProviderWithArgument() {
 				valueType:      reflect.TypeOf(int32(0)),
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
-				provider: reflect.ValueOf(module).MethodByName("Provider"),
+				provider: reflect.ValueOf(module).MethodByName("Provide"),
 				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(int32(0)),
 					annotationType: reflect.TypeOf(bool(false)),
@@ -165,7 +174,7 @@ func (self *BuildProvidersTests) TestValidProviderWithArgument() {
 
 type testValidProviderWithArgumentsModule struct{}
 
-func (self testValidProviderWithArgumentsModule) Provider(_ int32, _ bool, _ int64, _ string) (int32, int64) {
+func (self testValidProviderWithArgumentsModule) Provide(_ int32, _ bool, _ int64, _ string) (int32, int64) {
 	return 0, 0
 }
 
@@ -179,7 +188,7 @@ func (self *BuildProvidersTests) TestValidProviderWithArguments() {
 				valueType:      reflect.TypeOf(int32(0)),
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
-				provider: reflect.ValueOf(module).MethodByName("Provider"),
+				provider: reflect.ValueOf(module).MethodByName("Provide"),
 				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(int32(0)),
 					annotationType: reflect.TypeOf(bool(false)),
@@ -195,7 +204,7 @@ func (self *BuildProvidersTests) TestValidProviderWithArguments() {
 
 type testValidErrorProviderModule struct{}
 
-func (self testValidErrorProviderModule) Provider() (int32, int64, error) {
+func (self testValidErrorProviderModule) Provide() (int32, int64, error) {
 	return 0, 0, nil
 }
 
@@ -209,7 +218,7 @@ func (self *BuildProvidersTests) TestValidErrorProvider() {
 				valueType:      reflect.TypeOf(int32(0)),
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
-				provider:  reflect.ValueOf(module).MethodByName("Provider"),
+				provider:  reflect.ValueOf(module).MethodByName("Provide"),
 				arguments: []providerKey{},
 				hasError:  true,
 			},
@@ -219,11 +228,11 @@ func (self *BuildProvidersTests) TestValidErrorProvider() {
 
 type testTwoValidProvidersModule struct{}
 
-func (self testTwoValidProvidersModule) Provider1() (int32, int64) {
+func (self testTwoValidProvidersModule) Provide1() (int32, int64) {
 	return 0, 0
 }
 
-func (self testTwoValidProvidersModule) Provider2(_ int32, _ int64) (int32, bool) {
+func (self testTwoValidProvidersModule) Provide2(_ int32, _ int64) (int32, bool) {
 	return 0, false
 }
 
@@ -237,7 +246,7 @@ func (self *BuildProvidersTests) TestTwoValidProviders() {
 				valueType:      reflect.TypeOf(int32(0)),
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
-				provider:  reflect.ValueOf(module).MethodByName("Provider1"),
+				provider:  reflect.ValueOf(module).MethodByName("Provide1"),
 				arguments: []providerKey{},
 				hasError:  false,
 			},
@@ -245,7 +254,7 @@ func (self *BuildProvidersTests) TestTwoValidProviders() {
 				valueType:      reflect.TypeOf(int32(0)),
 				annotationType: reflect.TypeOf(bool(false)),
 			}: {
-				provider: reflect.ValueOf(module).MethodByName("Provider2"),
+				provider: reflect.ValueOf(module).MethodByName("Provide2"),
 				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(int32(0)),
 					annotationType: reflect.TypeOf(int64(0)),
@@ -258,13 +267,13 @@ func (self *BuildProvidersTests) TestTwoValidProviders() {
 
 type testValidProvidersModule1 struct{}
 
-func (self testValidProvidersModule1) Provider1() (int32, int64) {
+func (self testValidProvidersModule1) Provide1() (int32, int64) {
 	return 0, 0
 }
 
 type testValidProvidersModule2 struct{}
 
-func (self testValidProvidersModule2) Provider2(_ int32, _ int64) (int32, bool) {
+func (self testValidProvidersModule2) Provide2(_ int32, _ int64) (int32, bool) {
 	return 0, false
 }
 
@@ -279,7 +288,7 @@ func (self *BuildProvidersTests) TestValidProvidersInDifferentModules() {
 				valueType:      reflect.TypeOf(int32(0)),
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
-				provider:  reflect.ValueOf(module1).MethodByName("Provider1"),
+				provider:  reflect.ValueOf(module1).MethodByName("Provide1"),
 				arguments: []providerKey{},
 				hasError:  false,
 			},
@@ -287,7 +296,7 @@ func (self *BuildProvidersTests) TestValidProvidersInDifferentModules() {
 				valueType:      reflect.TypeOf(int32(0)),
 				annotationType: reflect.TypeOf(bool(false)),
 			}: {
-				provider: reflect.ValueOf(module2).MethodByName("Provider2"),
+				provider: reflect.ValueOf(module2).MethodByName("Provide2"),
 				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(int32(0)),
 					annotationType: reflect.TypeOf(int64(0)),
