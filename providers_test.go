@@ -114,7 +114,7 @@ func (self *BuildProvidersTests) TestIdenticalProviderTwiceActossModules() {
 				annotationType: reflect.TypeOf(int(0)),
 			}: {
 				provider:  reflect.ValueOf(module).MethodByName("Provide"),
-				arguments: []providerKey{},
+				arguments: []providerArgument{},
 				hasError:  false,
 			},
 		},
@@ -138,7 +138,7 @@ func (self *BuildProvidersTests) TestValidProviderWithNoArguments() {
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
 				provider:  reflect.ValueOf(module).MethodByName("Provide"),
-				arguments: []providerKey{},
+				arguments: []providerArgument{},
 				hasError:  false,
 			},
 		},
@@ -162,10 +162,10 @@ func (self *BuildProvidersTests) TestValidProviderWithArgument() {
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
 				provider: reflect.ValueOf(module).MethodByName("Provide"),
-				arguments: []providerKey{{
+				arguments: []providerArgument{{providerKey{
 					valueType:      reflect.TypeOf(int32(0)),
 					annotationType: reflect.TypeOf(bool(false)),
-				}},
+				}, nil}},
 				hasError: false,
 			},
 		},
@@ -189,13 +189,13 @@ func (self *BuildProvidersTests) TestValidProviderWithArguments() {
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
 				provider: reflect.ValueOf(module).MethodByName("Provide"),
-				arguments: []providerKey{{
+				arguments: []providerArgument{{providerKey{
 					valueType:      reflect.TypeOf(int32(0)),
 					annotationType: reflect.TypeOf(bool(false)),
-				}, {
+				}, nil}, {providerKey{
 					valueType:      reflect.TypeOf(int64(0)),
 					annotationType: reflect.TypeOf(string("")),
-				}},
+				}, nil}},
 				hasError: false,
 			},
 		},
@@ -219,7 +219,7 @@ func (self *BuildProvidersTests) TestValidErrorProvider() {
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
 				provider:  reflect.ValueOf(module).MethodByName("Provide"),
-				arguments: []providerKey{},
+				arguments: []providerArgument{},
 				hasError:  true,
 			},
 		},
@@ -247,7 +247,7 @@ func (self *BuildProvidersTests) TestTwoValidProviders() {
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
 				provider:  reflect.ValueOf(module).MethodByName("Provide1"),
-				arguments: []providerKey{},
+				arguments: []providerArgument{},
 				hasError:  false,
 			},
 			{
@@ -255,10 +255,10 @@ func (self *BuildProvidersTests) TestTwoValidProviders() {
 				annotationType: reflect.TypeOf(bool(false)),
 			}: {
 				provider: reflect.ValueOf(module).MethodByName("Provide2"),
-				arguments: []providerKey{{
+				arguments: []providerArgument{{providerKey{
 					valueType:      reflect.TypeOf(int32(0)),
 					annotationType: reflect.TypeOf(int64(0)),
-				}},
+				}, nil}},
 				hasError: false,
 			},
 		},
@@ -289,7 +289,7 @@ func (self *BuildProvidersTests) TestValidProvidersInDifferentModules() {
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
 				provider:  reflect.ValueOf(module1).MethodByName("Provide1"),
-				arguments: []providerKey{},
+				arguments: []providerArgument{},
 				hasError:  false,
 			},
 			{
@@ -297,10 +297,10 @@ func (self *BuildProvidersTests) TestValidProvidersInDifferentModules() {
 				annotationType: reflect.TypeOf(bool(false)),
 			}: {
 				provider: reflect.ValueOf(module2).MethodByName("Provide2"),
-				arguments: []providerKey{{
+				arguments: []providerArgument{{providerKey{
 					valueType:      reflect.TypeOf(int32(0)),
 					annotationType: reflect.TypeOf(int64(0)),
-				}},
+				}, nil}},
 				hasError: false,
 			},
 		},
@@ -324,9 +324,71 @@ func (self *BuildProvidersTests) TestCachedProvider() {
 				annotationType: reflect.TypeOf(int64(0)),
 			}: {
 				provider:  reflect.ValueOf(module).MethodByName("ProvideCachedValue"),
-				arguments: []providerKey{},
+				arguments: []providerArgument{},
 				hasError:  false,
 				cached:    true,
+			},
+		},
+	}, providers)
+}
+
+type injectedAnnotation1 struct{}
+type injectedAnnotation2 struct{}
+type injectedAnnotation3 struct{}
+
+type testInjectedAnnotationsModule struct {
+	annotation1 Annotation
+	annotation2 Annotation
+	annotation3 Annotation
+}
+
+func (self *testInjectedAnnotationsModule) Provide(
+	value1 int, _ injectedAnnotation1,
+	value2 int, _ injectedAnnotation2,
+) (int, injectedAnnotation3) {
+	return value1 + value2, injectedAnnotation3{}
+}
+
+func (self *testInjectedAnnotationsModule) ProvideAnnotation1() (Annotation, injectedAnnotation1) {
+	return self.annotation1, injectedAnnotation1{}
+}
+
+func (self *testInjectedAnnotationsModule) ProvideAnnotation2() (Annotation, injectedAnnotation2) {
+	return self.annotation2, injectedAnnotation2{}
+}
+
+func (self *testInjectedAnnotationsModule) ProvideAnnotation3() (Annotation, injectedAnnotation3) {
+	return self.annotation3, injectedAnnotation3{}
+}
+
+func (self *BuildProvidersTests) TestInjectedAnnotations() {
+	module := &testInjectedAnnotationsModule{
+		annotation1: Annotation1{},
+		annotation2: Annotation2{},
+		annotation3: Annotation3{},
+	}
+	providers, err := buildProviders(module)
+	self.Require().Nil(err)
+	self.Equal(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation3{}),
+			}: {
+				provider: reflect.ValueOf(module).MethodByName("Provide"),
+				arguments: []providerArgument{{
+					key: providerKey{
+						valueType:      reflect.TypeOf(int(0)),
+						annotationType: reflect.TypeOf(Annotation1{}),
+					},
+					originalAnnotationType: reflect.TypeOf(injectedAnnotation1{}),
+				}, {
+					key: providerKey{
+						valueType:      reflect.TypeOf(int(0)),
+						annotationType: reflect.TypeOf(Annotation2{}),
+					}, originalAnnotationType: reflect.TypeOf(injectedAnnotation2{}),
+				}},
+				hasError: false,
 			},
 		},
 	}, providers)
