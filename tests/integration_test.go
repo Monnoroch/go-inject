@@ -1,10 +1,18 @@
-package inject
+package tests
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+
+	"github.com/monnoroch/go-inject"
 )
+
+const testValue = 17
+
+type Annotation1 struct{}
+type Annotation2 struct{}
+type Annotation3 struct{}
 
 type IntegrationTests struct {
 	suite.Suite
@@ -12,7 +20,7 @@ type IntegrationTests struct {
 
 func (self *IntegrationTests) TestEmptyModule() {
 	type emptyModule struct{}
-	_, err := InjectorOf(emptyModule{})
+	_, err := inject.InjectorOf(emptyModule{})
 	self.Nil(err)
 }
 
@@ -23,7 +31,7 @@ func (self testModule) ProvideValue() (int, Annotation1) {
 }
 
 func (self *IntegrationTests) TestSingleProvider() {
-	injector, err := InjectorOf(testModule{})
+	injector, err := inject.InjectorOf(testModule{})
 	self.Require().Nil(err)
 	value := injector.MustGet(new(int), Annotation1{}).(int)
 	self.Equal(testValue, value)
@@ -49,7 +57,7 @@ func (self testModuleRecursive) ProvideSum(
 }
 
 func (self *IntegrationTests) TestRecursiveProviders() {
-	injector, err := InjectorOf(
+	injector, err := inject.InjectorOf(
 		testModuleRecursiveBase{},
 		testModuleRecursive{},
 	)
@@ -80,7 +88,7 @@ func (self *IntegrationTests) TestCache() {
 	notCachedModule := &testModuleNotCached{}
 	cachedModule := &testModuleCached{}
 
-	injector, err := InjectorOf(notCachedModule, cachedModule)
+	injector, err := inject.InjectorOf(notCachedModule, cachedModule)
 	self.Require().Nil(err)
 
 	_ = injector.MustGet(new(int), Annotation1{}).(int)
@@ -123,7 +131,7 @@ func (self testLazyModule) ProvideValueLazy(
 func (self *IntegrationTests) TestLazy() {
 	module1 := &testModuleNotCached{}
 	module2 := &testFlagModule{false, 0}
-	injector, err := InjectorOf(module1, module2, testLazyModule{})
+	injector, err := inject.InjectorOf(module1, module2, testLazyModule{})
 	self.Require().Nil(err)
 
 	value := injector.MustGet(new(int), Annotation3{}).(int)
@@ -133,7 +141,7 @@ func (self *IntegrationTests) TestLazy() {
 
 	module1 = &testModuleNotCached{}
 	module2 = &testFlagModule{true, 0}
-	injector, err = InjectorOf(module1, module2, testLazyModule{})
+	injector, err = inject.InjectorOf(module1, module2, testLazyModule{})
 	self.Require().Nil(err)
 
 	value = injector.MustGet(new(int), Annotation3{}).(int)
@@ -155,7 +163,7 @@ func (self testValuesModule) ProvideValue2() (int, Annotation2) {
 type testInjectedAnnotation struct{}
 
 type testDynamicAnnotationModule struct {
-	annotation Annotation
+	annotation inject.Annotation
 }
 
 func (self testDynamicAnnotationModule) ProvideDouble(
@@ -164,7 +172,7 @@ func (self testDynamicAnnotationModule) ProvideDouble(
 	return int64(value) * 2, testInjectedAnnotation{}
 }
 
-func (self testDynamicAnnotationModule) ProvideAnnotation() (Annotation, testInjectedAnnotation) {
+func (self testDynamicAnnotationModule) ProvideAnnotation() (inject.Annotation, testInjectedAnnotation) {
 	return self.annotation, testInjectedAnnotation{}
 }
 
@@ -178,7 +186,7 @@ func (self testSumModule) ProvideSum(
 }
 
 func (self *IntegrationTests) TestDynamicAnnotations() {
-	injector, err := InjectorOf(
+	injector, err := inject.InjectorOf(
 		testValuesModule{},
 		testDynamicAnnotationModule{Annotation1{}},
 		testDynamicAnnotationModule{Annotation2{}},
