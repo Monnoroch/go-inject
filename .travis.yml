@@ -3,6 +3,7 @@ dist: trusty
 language: go
 go:
   - "1.11"
+go_import_path: github.com/monnoroch/go-inject
 install:
   - export GOMETALINTER_VERSION="v2.0.10"
   - curl https://raw.githubusercontent.com/alecthomas/gometalinter/$GOMETALINTER_VERSION/scripts/install.sh > install.sh
