@@ -8,6 +8,14 @@ import (
 /// Default annotation for auto-injected types.
 type Auto struct{}
 
+/// An interface to be implemented to support auto-injecting a type.
+type AutoInjectable interface {
+	/// Returns a mapping of field names to annotations.
+	/// Omitted fields imply `inject.Auto` annotation.
+	/// Not implementing this method implies all fields having `inject.Auto` annotation.
+	ProvideAutoInjectAnnotations() interface{}
+}
+
 type autoInjectModule struct {
 	typePointer interface{}
 	annotation  Annotation
@@ -38,6 +46,7 @@ func AutoInjectCachedModule(typePointer interface{}, annotation Annotation, anno
 }
 
 var autoAnnotationType = reflect.TypeOf(Auto{})
+var autoInjectableType = reflect.TypeOf((*AutoInjectable)(nil)).Elem()
 
 func buildProvidersForAutoInjectModule(module autoInjectModule, providers *providersData) error {
 	key := providerKey{
@@ -49,12 +58,13 @@ func buildProvidersForAutoInjectModule(module autoInjectModule, providers *provi
 		return fmt.Errorf("%v is not a struct", reflect.TypeOf(module.typePointer))
 	}
 
-	annotations := reflect.TypeOf(module.annotations)
 	annotationByField := map[string]reflect.Type{}
-	for i := 0; i < annotations.NumField(); i += 1 {
-		field := annotations.Field(i)
-		annotationByField[field.Name] = field.Type
+	if key.valueType.Implements(autoInjectableType) {
+		asAutoInjectable := reflect.ValueOf(module.typePointer).Elem().Interface().(AutoInjectable)
+		defaultAnnotations := asAutoInjectable.ProvideAutoInjectAnnotations()
+		extractAnnotations(defaultAnnotations, annotationByField)
 	}
+	extractAnnotations(module.annotations, annotationByField)
 
 	arguments := []providerArgument{}
 	providerArgumentTypes := []reflect.Type{}
@@ -100,4 +110,12 @@ func buildProvidersForAutoInjectModule(module autoInjectModule, providers *provi
 	}
 	providers.providers[key] = provider
 	return nil
+}
+
+func extractAnnotations(annotationsStruct interface{}, annotationByField map[string]reflect.Type) {
+	annotations := reflect.TypeOf(annotationsStruct)
+	for i := 0; i < annotations.NumField(); i += 1 {
+		field := annotations.Field(i)
+		annotationByField[field.Name] = field.Type
+	}
 }

@@ -269,6 +269,35 @@ func (self *IntegrationTests) TestAutoInjectRecursive() {
 	}, value)
 }
 
+type Struct1 struct {
+	Value1 int
+	Value2 int
+}
+
+func (self Struct1) ProvideAutoInjectAnnotations() interface{} {
+	return struct {
+		Value1 Annotation1
+		Value2 Annotation2
+	}{}
+}
+
+func (self *IntegrationTests) TestAutoInjectDefaultAnnotations() {
+	injector, err := inject.InjectorOf(
+		testValuesModule{},
+		inject.AutoInjectModule(new(Struct1), Annotation3{}, struct{}{}),
+	)
+	self.Require().Nil(err)
+
+	value := injector.MustGet(new(Struct1), Annotation3{}).(Struct1)
+	self.Equal(
+		Struct1{
+			Value1: testValue,
+			Value2: testValue + 1,
+		},
+		value,
+	)
+}
+
 func TestIntegration(t *testing.T) {
 	suite.Run(t, new(IntegrationTests))
 }
