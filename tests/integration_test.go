@@ -202,6 +202,73 @@ func (self *IntegrationTests) TestDynamicAnnotations() {
 	self.Equal(int64(value1+value2), value3)
 }
 
+func (self *IntegrationTests) TestAutoInject() {
+	type Struct1 struct {
+		Value1 int
+		Value2 int
+	}
+	injector, err := inject.InjectorOf(
+		testValuesModule{},
+		inject.AutoInjectModule(new(Struct1), inject.Auto{}, struct {
+			Value1 Annotation1
+			Value2 Annotation2
+		}{}),
+	)
+	self.Require().Nil(err)
+
+	value := injector.MustGet(new(Struct1), inject.Auto{}).(Struct1)
+	self.Equal(
+		Struct1{
+			Value1: testValue,
+			Value2: testValue + 1,
+		},
+		value,
+	)
+}
+
+func (self *IntegrationTests) TestAutoInjectRecursive() {
+	type Struct1 struct {
+		Value1 int
+		Value2 int
+	}
+	type Struct2 struct {
+		Value   int
+		Struct1 Struct1
+	}
+	type Struct3 struct {
+		Struct1 Struct1
+		Struct2 Struct2
+	}
+	injector, err := inject.InjectorOf(
+		testValuesModule{},
+		inject.AutoInjectModule(new(Struct1), inject.Auto{}, struct {
+			Value1 Annotation1
+			Value2 Annotation2
+		}{}),
+		inject.AutoInjectModule(new(Struct2), inject.Auto{}, struct {
+			Value   Annotation2
+			Struct1 inject.Auto
+		}{}),
+		inject.AutoInjectModule(new(Struct3), inject.Auto{}, struct{}{}),
+	)
+	self.Require().Nil(err)
+
+	value := injector.MustGet(new(Struct3), inject.Auto{}).(Struct3)
+	self.Equal(Struct3{
+		Struct1: Struct1{
+			Value1: testValue,
+			Value2: testValue + 1,
+		},
+		Struct2: Struct2{
+			Value: testValue + 1,
+			Struct1: Struct1{
+				Value1: testValue,
+				Value2: testValue + 1,
+			},
+		},
+	}, value)
+}
+
 func TestIntegration(t *testing.T) {
 	suite.Run(t, new(IntegrationTests))
 }

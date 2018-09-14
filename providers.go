@@ -33,6 +33,11 @@ func buildProviders(module Module) (*providersData, error) {
 		providers: map[providerKey]providerData{},
 	}
 	for _, module := range flattenModule(module) {
+		if autoModule, ok := module.(autoInjectModule); ok {
+			if err := buildProvidersForAutoInjectModule(autoModule, providers); err != nil {
+				return nil, err
+			}
+		}
 		if err := buildProvidersForLeafModule(module, providers); err != nil {
 			return nil, err
 		}
