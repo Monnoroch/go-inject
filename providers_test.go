@@ -394,6 +394,138 @@ func (self *BuildProvidersTests) TestInjectedAnnotations() {
 	}, providers)
 }
 
+func (self *BuildProvidersTests) TestAutoInjectEmptyStruct() {
+	type Struct struct{}
+	providers, err := buildProviders(AutoInjectModule(new(Struct), Annotation1{}, struct{}{}))
+	self.Require().Nil(err)
+	removeProviderFunctions(providers)
+	self.Equal(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(Struct{}),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				arguments: []providerArgument{},
+			},
+		},
+	}, providers)
+}
+
+func (self *BuildProvidersTests) TestAutoInjectStructAuto() {
+	type Struct1 struct{}
+	type Struct2 struct {
+		Struct1 Struct1
+	}
+	type Struct3 struct {
+		Struct1 Struct1
+		Struct2 Struct2
+	}
+	providers, err := buildProviders(CombineModules(
+		AutoInjectModule(new(Struct1), Auto{}, struct{}{}),
+		AutoInjectModule(new(Struct2), Auto{}, struct{}{}),
+		AutoInjectModule(new(Struct3), Auto{}, struct{}{}),
+	))
+	self.Require().Nil(err)
+	removeProviderFunctions(providers)
+	self.Equal(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(Struct1{}),
+				annotationType: reflect.TypeOf(Auto{}),
+			}: {
+				arguments: []providerArgument{},
+			},
+			{
+				valueType:      reflect.TypeOf(Struct2{}),
+				annotationType: reflect.TypeOf(Auto{}),
+			}: {
+				arguments: []providerArgument{{providerKey{
+					valueType:      reflect.TypeOf(Struct1{}),
+					annotationType: reflect.TypeOf(Auto{}),
+				}, nil}},
+			},
+			{
+				valueType:      reflect.TypeOf(Struct3{}),
+				annotationType: reflect.TypeOf(Auto{}),
+			}: {
+				arguments: []providerArgument{{providerKey{
+					valueType:      reflect.TypeOf(Struct1{}),
+					annotationType: reflect.TypeOf(Auto{}),
+				}, nil}, {providerKey{
+					valueType:      reflect.TypeOf(Struct2{}),
+					annotationType: reflect.TypeOf(Auto{}),
+				}, nil}},
+			},
+		},
+	}, providers)
+}
+
+func (self *BuildProvidersTests) TestAutoInjectStructCustomAnnotations() {
+	type Struct1 struct{}
+	type Struct2 struct {
+		Struct1 Struct1
+	}
+	type Struct3 struct {
+		Struct1 Struct1
+		Struct2 Struct2
+	}
+	providers, err := buildProviders(CombineModules(
+		AutoInjectModule(new(Struct1), Annotation1{}, struct{}{}),
+		AutoInjectModule(new(Struct2), Annotation2{}, struct {
+			Struct1 Annotation1
+		}{}),
+		AutoInjectModule(new(Struct3), Annotation3{}, struct {
+			Struct1 Annotation1
+			Struct2 Annotation2
+		}{}),
+	))
+	self.Require().Nil(err)
+	removeProviderFunctions(providers)
+	self.Equal(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(Struct1{}),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				arguments: []providerArgument{},
+			},
+			{
+				valueType:      reflect.TypeOf(Struct2{}),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				arguments: []providerArgument{{providerKey{
+					valueType:      reflect.TypeOf(Struct1{}),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}, nil}},
+			},
+			{
+				valueType:      reflect.TypeOf(Struct3{}),
+				annotationType: reflect.TypeOf(Annotation3{}),
+			}: {
+				arguments: []providerArgument{{providerKey{
+					valueType:      reflect.TypeOf(Struct1{}),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}, nil}, {providerKey{
+					valueType:      reflect.TypeOf(Struct2{}),
+					annotationType: reflect.TypeOf(Annotation2{}),
+				}, nil}},
+			},
+		},
+	}, providers)
+}
+
+func (self *BuildProvidersTests) TestAutoInjectPrimitive() {
+	_, err := buildProviders(AutoInjectModule(new(int), Annotation1{}, struct{}{}))
+	self.Contains(err.Error(), "int is not a struct")
+}
+
+func removeProviderFunctions(providers *providersData) {
+	for key, provider := range providers.providers {
+		provider.provider = reflect.Value{}
+		providers.providers[key] = provider
+	}
+}
+
 func TestBuildProviders(t *testing.T) {
 	suite.Run(t, new(BuildProvidersTests))
 }
