@@ -514,6 +514,69 @@ func (self *BuildProvidersTests) TestAutoInjectStructCustomAnnotations() {
 	}, providers)
 }
 
+type Struct1Default struct{}
+type Struct2Default struct {
+	Struct1 Struct1Default
+}
+
+func (self Struct2Default) ProvideAutoInjectAnnotations() interface{} {
+	return struct {
+		Struct1 Annotation1
+	}{}
+}
+
+type Struct3Default struct {
+	Struct1 Struct1Default
+	Struct2 Struct2Default
+}
+
+func (self Struct3Default) ProvideAutoInjectAnnotations() interface{} {
+	return struct {
+		Struct1 Annotation1
+		Struct2 Annotation2
+	}{}
+}
+func (self *BuildProvidersTests) TestAutoInjectStructDefaultAnnotations() {
+	providers, err := buildProviders(CombineModules(
+		AutoInjectModule(new(Struct1Default), Annotation1{}, struct{}{}),
+		AutoInjectModule(new(Struct2Default), Annotation2{}, struct{}{}),
+		AutoInjectModule(new(Struct3Default), Annotation3{}, struct{}{}),
+	))
+	self.Require().Nil(err)
+	removeProviderFunctions(providers)
+	self.Equal(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(Struct1Default{}),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				arguments: []providerArgument{},
+			},
+			{
+				valueType:      reflect.TypeOf(Struct2Default{}),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				arguments: []providerArgument{{providerKey{
+					valueType:      reflect.TypeOf(Struct1Default{}),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}, nil}},
+			},
+			{
+				valueType:      reflect.TypeOf(Struct3Default{}),
+				annotationType: reflect.TypeOf(Annotation3{}),
+			}: {
+				arguments: []providerArgument{{providerKey{
+					valueType:      reflect.TypeOf(Struct1Default{}),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}, nil}, {providerKey{
+					valueType:      reflect.TypeOf(Struct2Default{}),
+					annotationType: reflect.TypeOf(Annotation2{}),
+				}, nil}},
+			},
+		},
+	}, providers)
+}
+
 func (self *BuildProvidersTests) TestAutoInjectPrimitive() {
 	_, err := buildProviders(AutoInjectModule(new(int), Annotation1{}, struct{}{}))
 	self.Contains(err.Error(), "int is not a struct")
