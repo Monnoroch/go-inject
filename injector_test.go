@@ -500,6 +500,43 @@ func (self *InjectorTests) TestCallStoredLazyProvider() {
 	})
 }
 
+func (self *InjectorTests) TestProvideFunctionAlias() {
+	type FuncAlias func() int
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(FuncAlias(nil)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (FuncAlias, Annotation1) {
+					return func() int { return testValue }, Annotation1{}
+				}),
+				arguments: []providerArgument{},
+				hasError:  false,
+			},
+			{
+				valueType:      reflect.TypeOf(FuncAlias(nil)),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				provider: reflect.ValueOf(func(value FuncAlias, _ Annotation1) (FuncAlias, Annotation2) {
+					return func() int { return value() + 1 }, Annotation2{}
+				}),
+				arguments: []providerArgument{{providerKey{
+					valueType:      reflect.TypeOf(FuncAlias(nil)),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}, nil}},
+				hasError: false,
+			},
+		},
+	})
+
+	value, err := self.injector.Get(new(FuncAlias), Annotation2{})
+	self.Require().Nil(err)
+	intValue, ok := value.(FuncAlias)
+	self.Require().True(ok)
+	self.Equal(intValue(), testValue+1)
+}
+
 func (self *InjectorTests) TestGetTransitive() {
 	self.initInjector(&providersData{
 		providers: map[providerKey]providerData{
