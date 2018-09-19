@@ -464,6 +464,42 @@ func (self *InjectorTests) TestGetLazyCached() {
 	self.Equal(testValue, self.getInt(Annotation2{}))
 }
 
+func (self *InjectorTests) TestCallStoredLazyProvider() {
+	var lazyProvider func() int = nil
+	self.initInjector(&providersData{
+		providers: map[providerKey]providerData{
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation1{}),
+			}: {
+				provider: reflect.ValueOf(func() (int, Annotation1) {
+					return testValue, Annotation1{}
+				}),
+				arguments: []providerArgument{},
+				hasError:  false,
+			},
+			{
+				valueType:      reflect.TypeOf(int(0)),
+				annotationType: reflect.TypeOf(Annotation2{}),
+			}: {
+				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
+					lazyProvider = value
+					return testValue + 1, Annotation2{}
+				}),
+				arguments: []providerArgument{{providerKey{
+					valueType:      reflect.TypeOf(func() int { return 0 }),
+					annotationType: reflect.TypeOf(Annotation1{}),
+				}, nil}},
+				hasError: false,
+			},
+		},
+	})
+	self.getInt(Annotation2{})
+	self.PanicsWithValue(injectOutsideInjectorCallError, func() {
+		lazyProvider()
+	})
+}
+
 func (self *InjectorTests) TestGetTransitive() {
 	self.initInjector(&providersData{
 		providers: map[providerKey]providerData{

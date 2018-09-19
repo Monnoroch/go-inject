@@ -77,6 +77,8 @@ type lazyProviderError struct {
 	cause error
 }
 
+var injectOutsideInjectorCallError = errors.New("Trying to call a lazy provider outside of an Injector.Get call")
+
 func (self *Injector) get(key providerKey) (interface{}, error) {
 	provider, ok := self.providers.providers[key]
 	if !ok {
@@ -84,12 +86,17 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 	}
 
 	arguments := make([]reflect.Value, len(provider.arguments)*2)
+	injectionTime := true
 	for index, argument := range provider.arguments {
 		argumentKey := argument.key
 		offset := index * 2
 		if lazyArgumentType := getLazyArgumentType(argumentKey); lazyArgumentType != nil {
 			strictArgumentKey := providerKey{valueType: lazyArgumentType, annotationType: argumentKey.annotationType}
 			arguments[offset] = reflect.MakeFunc(argumentKey.valueType, func(_ []reflect.Value) []reflect.Value {
+				if !injectionTime {
+					panic(injectOutsideInjectorCallError)
+				}
+
 				result, err := self.getCached(strictArgumentKey)
 				if err != nil {
 					panic(lazyProviderError{cause: err})
@@ -111,6 +118,7 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 	}
 
 	outputs, err := callProviderHandlingLazyErrors(provider.provider, arguments)
+	injectionTime = false
 	if err != nil {
 		return nil, provideError{key: key, cause: err}
 	}
