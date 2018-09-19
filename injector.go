@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 )
 
@@ -153,6 +154,11 @@ func callProviderHandlingLazyErrors(
 
 func getLazyArgumentType(key providerKey) reflect.Type {
 	if key.valueType.Kind() != reflect.Func {
+		return nil
+	}
+	// Types that are aliases of function types have Kind() == Func,
+	// but have distinct names.
+	if !strings.HasPrefix(key.valueType.String(), "func() ") {
 		return nil
 	}
 	if key.valueType.NumOut() != 1 {
