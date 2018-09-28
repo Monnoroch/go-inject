@@ -2,6 +2,7 @@ package inject
 
 // A module that is a collection of modules should implement this interface.
 type moduleCollection interface {
+	Module
 	// Get a list of modules in the collection.
 	Modules() []Module
 }
