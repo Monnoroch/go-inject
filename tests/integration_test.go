@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/monnoroch/go-inject"
+	"github.com/monnoroch/go-inject/auto"
 )
 
 const testValue = 17
@@ -167,14 +168,14 @@ func (self *IntegrationTests) TestAutoInject() {
 	}
 	injector, err := inject.InjectorOf(
 		testValuesModule{},
-		inject.AutoInjectModule(new(Struct1), inject.Auto{}, struct {
+		autoinject.AutoInjectModule(new(Struct1)).WithAnnotations(struct {
 			Value1 Annotation1
 			Value2 Annotation2
 		}{}),
 	)
 	self.Require().Nil(err)
 
-	value := injector.MustGet(new(Struct1), inject.Auto{}).(Struct1)
+	value := injector.MustGet(new(Struct1), autoinject.Auto{}).(Struct1)
 	self.Equal(
 		Struct1{
 			Value1: testValue,
@@ -199,19 +200,19 @@ func (self *IntegrationTests) TestAutoInjectRecursive() {
 	}
 	injector, err := inject.InjectorOf(
 		testValuesModule{},
-		inject.AutoInjectModule(new(Struct1), inject.Auto{}, struct {
+		autoinject.AutoInjectModule(new(Struct1)).WithAnnotations(struct {
 			Value1 Annotation1
 			Value2 Annotation2
 		}{}),
-		inject.AutoInjectModule(new(Struct2), inject.Auto{}, struct {
+		autoinject.AutoInjectModule(new(Struct2)).WithAnnotations(struct {
 			Value   Annotation2
-			Struct1 inject.Auto
+			Struct1 autoinject.Auto
 		}{}),
-		inject.AutoInjectModule(new(Struct3), inject.Auto{}, struct{}{}),
+		autoinject.AutoInjectModule(new(Struct3)).WithAnnotations(struct{}{}),
 	)
 	self.Require().Nil(err)
 
-	value := injector.MustGet(new(Struct3), inject.Auto{}).(Struct3)
+	value := injector.MustGet(new(Struct3), autoinject.Auto{}).(Struct3)
 	self.Equal(Struct3{
 		Struct1: Struct1{
 			Value1: testValue,
@@ -242,7 +243,7 @@ func (self Struct1) ProvideAutoInjectAnnotations() interface{} {
 func (self *IntegrationTests) TestAutoInjectDefaultAnnotations() {
 	injector, err := inject.InjectorOf(
 		testValuesModule{},
-		inject.AutoInjectModule(new(Struct1), Annotation3{}, struct{}{}),
+		autoinject.AutoInjectModule(new(Struct1)).WithAnnotation(Annotation3{}).WithAnnotations(struct{}{}),
 	)
 	self.Require().Nil(err)
 
