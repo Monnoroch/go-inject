@@ -23,65 +23,16 @@ type providersData struct {
 	providers map[providerKey]providerData
 }
 
-func buildProviders(module Module) (*providersData, error) {
-	providers := &providersData{
-		providers: map[providerKey]providerData{},
-	}
-	for _, module := range flattenModule(module) {
-		if autoModule, ok := module.(autoInjectModule); ok {
-			if err := buildProvidersForAutoInjectModule(autoModule, providers); err != nil {
-				return nil, err
-			}
-		}
-		if err := buildProvidersForLeafModule(module, providers); err != nil {
-			return nil, err
-		}
-	}
-	return providers, nil
+/// A wrapper type around a regular module that implements DynamicModule to make
+/// provider table generation code more uniform.
+type staticProvidersModule struct {
+	module Module
 }
 
-type internalProviderData struct {
-	provider  reflect.Value
-	output    providerKey
-	arguments []providerKey
-	module    Module
-	hasError  bool
-	cached    bool
-}
-
-type moduleProvidersData struct {
-	// A map of provider keys to provider functions.
-	providers map[providerKey]internalProviderData
-}
-
-func buildProvidersForLeafModule(module Module, providers *providersData) error {
-	moduleProviders, err := buildModuleProvidersForLeafModule(module)
-	if err != nil {
-		return err
-	}
-	for _, provider := range moduleProviders.providers {
-		if existingProvider, ok := providers.providers[provider.output]; ok {
-			if !reflect.DeepEqual(existingProvider.provider, provider.provider) {
-				return fmt.Errorf(
-					"Duplicate providers for key {%v, %v}",
-					provider.output.valueType, provider.output.annotationType)
-			}
-		}
-		providers.providers[provider.output] = providerData{
-			provider:  provider.provider,
-			arguments: provider.arguments,
-			hasError:  provider.hasError,
-			cached:    provider.cached,
-		}
-	}
-	return nil
-}
-
-func buildModuleProvidersForLeafModule(module Module) (*moduleProvidersData, error) {
-	providers := moduleProvidersData{
-		providers: map[providerKey]internalProviderData{},
-	}
-	moduleValue := reflect.ValueOf(module)
+func (self staticProvidersModule) Providers() ([]Provider, error) {
+	providerKeys := map[providerKey]struct{}{}
+	providers := []Provider{}
+	moduleValue := reflect.ValueOf(self.module)
 	moduleType := moduleValue.Type()
 	for methodIndex := 0; methodIndex < moduleValue.NumMethod(); methodIndex += 1 {
 		method := moduleValue.Method(methodIndex)
@@ -90,38 +41,42 @@ func buildModuleProvidersForLeafModule(module Module) (*moduleProvidersData, err
 			!isProviderWithError(method, methodDefinition) {
 			return nil, fmt.Errorf(
 				"%#v is not a module: it has an invalid provider %#v.",
-				module, method)
+				self.module, method)
 		}
 
 		methodType := method.Type()
-		arguments := make([]providerKey, 0, methodType.NumIn()/2)
-		for inputIndex := 0; inputIndex < methodType.NumIn(); inputIndex += 2 {
-			valueInput := methodType.In(inputIndex)
-			annotationInput := methodType.In(inputIndex + 1)
-			arguments = append(arguments, providerKey{
-				valueType:      valueInput,
-				annotationType: annotationInput,
-			})
-		}
-
 		key := providerKey{
 			valueType:      methodType.Out(0),
 			annotationType: methodType.Out(1),
 		}
-		if _, ok := providers.providers[key]; ok {
-			return nil, fmt.Errorf("Duplicate providers for key %v in module %#v", key, module)
+		if _, ok := providerKeys[key]; ok {
+			return nil, fmt.Errorf("Duplicate providers for key %v in module %#v", key, self.module)
 		}
+		providerKeys[key] = struct{}{}
 
-		providers.providers[key] = internalProviderData{
-			hasError:  methodType.NumOut() == 3,
-			module:    module,
-			provider:  method,
-			output:    key,
-			arguments: arguments,
-			cached:    strings.HasPrefix(methodDefinition.Name, cachedProviderPrefix),
+		providers = append(providers, Provider{
+			Function: method,
+			Cached:   strings.HasPrefix(methodDefinition.Name, cachedProviderPrefix),
+		})
+	}
+
+	return providers, nil
+}
+
+func buildProviders(module Module) (*providersData, error) {
+	providers := &providersData{
+		providers: map[providerKey]providerData{},
+	}
+	for _, module := range flattenModule(module) {
+		dynamicModule, ok := module.(DynamicModule)
+		if !ok {
+			dynamicModule = staticProvidersModule{module}
+		}
+		if err := buildProvidersFromDynamicModule(dynamicModule, providers); err != nil {
+			return nil, err
 		}
 	}
-	return &providers, nil
+	return providers, nil
 }
 
 var globalAnnotationType = reflect.TypeOf((*Annotation)(nil)).Elem()
@@ -134,8 +89,13 @@ func isProvider(method reflect.Value, methodDefinition reflect.Method) bool {
 	if !strings.HasPrefix(methodDefinition.Name, providerPrefix) {
 		return false
 	}
+	return isProviderFunction(method.Type())
+}
 
-	methodType := method.Type()
+func isProviderFunction(methodType reflect.Type) bool {
+	if methodType.Kind() != reflect.Func {
+		return false
+	}
 	if methodType.NumOut() != 2 {
 		return false
 	}
@@ -146,8 +106,13 @@ func isProviderWithError(method reflect.Value, methodDefinition reflect.Method) 
 	if !strings.HasPrefix(methodDefinition.Name, providerPrefix) {
 		return false
 	}
+	return isProviderWithErrorFunction(method.Type())
+}
 
-	methodType := method.Type()
+func isProviderWithErrorFunction(methodType reflect.Type) bool {
+	if methodType.Kind() != reflect.Func {
+		return false
+	}
 	if methodType.NumOut() != 3 {
 		return false
 	}
