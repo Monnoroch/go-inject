@@ -3,7 +3,6 @@ package inject
 import (
 	"fmt"
 	"reflect"
-	"strings"
 )
 
 type providerKey struct {
@@ -23,46 +22,6 @@ type providersData struct {
 	providers map[providerKey]providerData
 }
 
-/// A wrapper type around a regular module that implements DynamicModule to make
-/// provider table generation code more uniform.
-type staticProvidersModule struct {
-	module Module
-}
-
-func (self staticProvidersModule) Providers() ([]Provider, error) {
-	providerKeys := map[providerKey]struct{}{}
-	providers := []Provider{}
-	moduleValue := reflect.ValueOf(self.module)
-	moduleType := moduleValue.Type()
-	for methodIndex := 0; methodIndex < moduleValue.NumMethod(); methodIndex += 1 {
-		method := moduleValue.Method(methodIndex)
-		methodDefinition := moduleType.Method(methodIndex)
-		if !isProvider(method, methodDefinition) &&
-			!isProviderWithError(method, methodDefinition) {
-			return nil, fmt.Errorf(
-				"%#v is not a module: it has an invalid provider %#v.",
-				self.module, method)
-		}
-
-		methodType := method.Type()
-		key := providerKey{
-			valueType:      methodType.Out(0),
-			annotationType: methodType.Out(1),
-		}
-		if _, ok := providerKeys[key]; ok {
-			return nil, fmt.Errorf("Duplicate providers for key %v in module %#v", key, self.module)
-		}
-		providerKeys[key] = struct{}{}
-
-		providers = append(providers, Provider{
-			Function: method,
-			Cached:   strings.HasPrefix(methodDefinition.Name, cachedProviderPrefix),
-		})
-	}
-
-	return providers, nil
-}
-
 func buildProviders(module Module) (*providersData, error) {
 	providers := &providersData{
 		providers: map[providerKey]providerData{},
@@ -79,18 +38,63 @@ func buildProviders(module Module) (*providersData, error) {
 	return providers, nil
 }
 
+func buildProvidersFromDynamicModule(module DynamicModule, providers *providersData) error {
+	dynamicProviders, err := module.Providers()
+	if err != nil {
+		return err
+	}
+
+	for _, dynamicProvider := range dynamicProviders {
+		if err := buildProvidersFromDynamicProvider(dynamicProvider, providers); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func buildProvidersFromDynamicProvider(dynamicProvider Provider, providers *providersData) error {
+	function, ok := dynamicProvider.Function.(reflect.Value)
+	if !ok {
+		function = reflect.ValueOf(dynamicProvider.Function)
+	}
+	functionType := function.Type()
+	if !isProviderFunction(functionType) && !isProviderWithErrorFunction(functionType) {
+		return fmt.Errorf("%#v is an invalid provider.", dynamicProvider)
+	}
+
+	arguments := make([]providerKey, 0, functionType.NumIn()/2)
+	for inputIndex := 0; inputIndex < functionType.NumIn(); inputIndex += 2 {
+		valueInput := functionType.In(inputIndex)
+		annotationInput := functionType.In(inputIndex + 1)
+		arguments = append(arguments, providerKey{
+			valueType:      valueInput,
+			annotationType: annotationInput,
+		})
+	}
+
+	provider := providerData{
+		provider:  function,
+		arguments: arguments,
+		cached:    dynamicProvider.Cached,
+		hasError:  functionType.NumOut() == 3,
+	}
+	key := providerKey{
+		valueType:      functionType.Out(0),
+		annotationType: functionType.Out(1),
+	}
+	if existingProvider, ok := providers.providers[key]; ok {
+		if !reflect.DeepEqual(existingProvider.provider, provider.provider) {
+			return fmt.Errorf(
+				"Duplicate providers for key {%v, %v}",
+				key.valueType, key.annotationType)
+		}
+	}
+	providers.providers[key] = provider
+	return nil
+}
+
 var globalAnnotationType = reflect.TypeOf((*Annotation)(nil)).Elem()
 var globalErrorType = reflect.TypeOf((*error)(nil)).Elem()
-
-const providerPrefix = "Provide"
-const cachedProviderPrefix = providerPrefix + "Cached"
-
-func isProvider(method reflect.Value, methodDefinition reflect.Method) bool {
-	if !strings.HasPrefix(methodDefinition.Name, providerPrefix) {
-		return false
-	}
-	return isProviderFunction(method.Type())
-}
 
 func isProviderFunction(methodType reflect.Type) bool {
 	if methodType.Kind() != reflect.Func {
@@ -100,13 +104,6 @@ func isProviderFunction(methodType reflect.Type) bool {
 		return false
 	}
 	return hasAnnotationOutput(methodType) && hasInputsWithAnnotations(methodType)
-}
-
-func isProviderWithError(method reflect.Value, methodDefinition reflect.Method) bool {
-	if !strings.HasPrefix(methodDefinition.Name, providerPrefix) {
-		return false
-	}
-	return isProviderWithErrorFunction(method.Type())
 }
 
 func isProviderWithErrorFunction(methodType reflect.Type) bool {
