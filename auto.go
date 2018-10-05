@@ -67,11 +67,11 @@ func (self autoInjectModule) Providers() ([]Provider, error) {
 	providerArgumentTypes := []reflect.Type{}
 	for i := 0; i < valueType.NumField(); i += 1 {
 		field := valueType.Field(i)
-		annotationType, ok := annotationByField[field.Name]
+		fieldAnnotationType, ok := annotationByField[field.Name]
 		if !ok {
-			annotationType = autoAnnotationType
+			fieldAnnotationType = autoAnnotationType
 		}
-		providerArgumentTypes = append(providerArgumentTypes, field.Type, annotationType)
+		providerArgumentTypes = append(providerArgumentTypes, field.Type, fieldAnnotationType)
 	}
 	provider := Provider{
 		Function: reflect.MakeFunc(
