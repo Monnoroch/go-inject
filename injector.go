@@ -88,8 +88,7 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 
 	arguments := make([]reflect.Value, len(provider.arguments)*2)
 	injectionTime := true
-	for index, argument := range provider.arguments {
-		argumentKey := argument.key
+	for index, argumentKey := range provider.arguments {
 		offset := index * 2
 		if lazyArgumentType := getLazyArgumentType(argumentKey); lazyArgumentType != nil {
 			strictArgumentKey := providerKey{valueType: lazyArgumentType, annotationType: argumentKey.annotationType}
@@ -105,17 +104,13 @@ func (self *Injector) get(key providerKey) (interface{}, error) {
 				return []reflect.Value{reflect.ValueOf(result)}
 			})
 		} else {
-			argumentValue, err := self.getCached(argumentKey)
+			argument, err := self.getCached(argumentKey)
 			if err != nil {
 				return nil, provideError{key: key, cause: err}
 			}
-			arguments[offset] = getValueForArgument(argumentValue, argumentKey.valueType)
+			arguments[offset] = getValueForArgument(argument, argumentKey.valueType)
 		}
-		annotationType := argument.originalAnnotationType
-		if annotationType == nil {
-			annotationType = argumentKey.annotationType
-		}
-		arguments[offset+1] = reflect.Zero(annotationType)
+		arguments[offset+1] = reflect.Zero(argumentKey.annotationType)
 	}
 
 	outputs, err := callProviderHandlingLazyErrors(provider.provider, arguments)

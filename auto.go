@@ -66,7 +66,7 @@ func buildProvidersForAutoInjectModule(module autoInjectModule, providers *provi
 	}
 	extractAnnotations(module.annotations, annotationByField)
 
-	arguments := []providerArgument{}
+	arguments := []providerKey{}
 	providerArgumentTypes := []reflect.Type{}
 	for i := 0; i < key.valueType.NumField(); i += 1 {
 		field := key.valueType.Field(i)
@@ -74,10 +74,10 @@ func buildProvidersForAutoInjectModule(module autoInjectModule, providers *provi
 		if !ok {
 			annotationType = autoAnnotationType
 		}
-		arguments = append(arguments, providerArgument{providerKey{
+		arguments = append(arguments, providerKey{
 			valueType:      field.Type,
 			annotationType: annotationType,
-		}, nil})
+		})
 		providerArgumentTypes = append(providerArgumentTypes, field.Type, annotationType)
 	}
 

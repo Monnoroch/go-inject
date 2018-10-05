@@ -41,10 +41,10 @@ func (self *InjectorTests) TestNotFoundTransitive() {
 				provider: reflect.ValueOf(func(_ int, _ Annotation2) (int, Annotation1) {
 					return testValue, Annotation1{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(int(0)),
 					annotationType: reflect.TypeOf(Annotation2{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -65,7 +65,7 @@ func (self *InjectorTests) TestGet() {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					return testValue, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 		},
@@ -84,7 +84,7 @@ func (self *InjectorTests) TestGetNil() {
 				provider: reflect.ValueOf(func() (*int, Annotation1) {
 					return nil, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 		},
@@ -103,7 +103,7 @@ func (self *InjectorTests) TestErrorGet() {
 				provider: reflect.ValueOf(func() (int, Annotation1, error) {
 					return testValue, Annotation1{}, nil
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  true,
 			},
 		},
@@ -122,7 +122,7 @@ func (self *InjectorTests) TestGetError() {
 				provider: reflect.ValueOf(func() (int, Annotation1, error) {
 					return testValue, Annotation1{}, testError
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  true,
 			},
 		},
@@ -141,7 +141,7 @@ func (self *InjectorTests) TestPanic() {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					panic(testError)
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 		},
@@ -165,7 +165,7 @@ func (self *InjectorTests) TestCachedGet() {
 					}()
 					return counter, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 				cached:    true,
 			},
@@ -185,7 +185,7 @@ func (self *InjectorTests) TestGetTransitiveError() {
 				provider: reflect.ValueOf(func() (int, Annotation1, error) {
 					return testValue, Annotation1{}, testError
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  true,
 			},
 			{
@@ -195,10 +195,10 @@ func (self *InjectorTests) TestGetTransitiveError() {
 				provider: reflect.ValueOf(func(value int, _ Annotation1) (int, Annotation2) {
 					return value * 2, Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(int(0)),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -221,7 +221,7 @@ func (self *InjectorTests) TestGetRecalculates() {
 					}()
 					return counter, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 		},
@@ -229,40 +229,6 @@ func (self *InjectorTests) TestGetRecalculates() {
 	self.Equal(testValue, self.getInt(Annotation1{}))
 	self.Equal(testValue+1, self.getInt(Annotation1{}))
 	self.Equal(testValue+2, self.getInt(Annotation1{}))
-}
-
-func (self *InjectorTests) TestGetWithOriginalAnnotation() {
-	self.initInjector(&providersData{
-		providers: map[providerKey]providerData{
-			{
-				valueType:      reflect.TypeOf(int(0)),
-				annotationType: reflect.TypeOf(Annotation1{}),
-			}: {
-				provider: reflect.ValueOf(func() (int, Annotation1) {
-					return testValue, Annotation1{}
-				}),
-				arguments: []providerArgument{},
-				hasError:  false,
-			},
-			{
-				valueType:      reflect.TypeOf(int(0)),
-				annotationType: reflect.TypeOf(Annotation2{}),
-			}: {
-				provider: reflect.ValueOf(func(value int, _ Annotation3) (int, Annotation2) {
-					return value * 2, Annotation2{}
-				}),
-				arguments: []providerArgument{{
-					key: providerKey{
-						valueType:      reflect.TypeOf(int(0)),
-						annotationType: reflect.TypeOf(Annotation1{}),
-					},
-					originalAnnotationType: reflect.TypeOf(Annotation3{}),
-				}},
-				hasError: false,
-			},
-		},
-	})
-	self.Equal(testValue*2, self.getInt(Annotation2{}))
 }
 
 func (self *InjectorTests) TestGetLazy() {
@@ -275,7 +241,7 @@ func (self *InjectorTests) TestGetLazy() {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					return testValue, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -285,10 +251,10 @@ func (self *InjectorTests) TestGetLazy() {
 				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
 					return value(), Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(func() int { return 0 }),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -307,7 +273,7 @@ func (self *InjectorTests) TestGetLazyNil() {
 				provider: reflect.ValueOf(func() (*int, Annotation1) {
 					return nil, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -317,10 +283,10 @@ func (self *InjectorTests) TestGetLazyNil() {
 				provider: reflect.ValueOf(func(value func() *int, _ Annotation1) (*int, Annotation2) {
 					return value(), Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(func() *int { return nil }),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -338,7 +304,7 @@ func (self *InjectorTests) TestGetLazyError() {
 				provider: reflect.ValueOf(func() (int, Annotation1, error) {
 					return 0, Annotation1{}, testError
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  true,
 			},
 			{
@@ -348,10 +314,10 @@ func (self *InjectorTests) TestGetLazyError() {
 				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
 					return value(), Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(func() int { return 0 }),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -370,7 +336,7 @@ func (self *InjectorTests) TestGetLazyPanic() {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					panic(testError)
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -380,10 +346,10 @@ func (self *InjectorTests) TestGetLazyPanic() {
 				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
 					return value(), Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(func() int { return 0 }),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -405,7 +371,7 @@ func (self *InjectorTests) TestGetLazyDoesNotCallProviderUntilRequested() {
 					calledLazyProvider = true
 					return testValue, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -415,10 +381,10 @@ func (self *InjectorTests) TestGetLazyDoesNotCallProviderUntilRequested() {
 				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
 					return 1, Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(func() int { return 0 }),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -441,7 +407,7 @@ func (self *InjectorTests) TestGetLazyCached() {
 					}()
 					return counter, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 				cached:    true,
 			},
@@ -452,10 +418,10 @@ func (self *InjectorTests) TestGetLazyCached() {
 				provider: reflect.ValueOf(func(value func() int, _ Annotation1) (int, Annotation2) {
 					return value(), Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(func() int { return 0 }),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -475,7 +441,7 @@ func (self *InjectorTests) TestCallStoredLazyProvider() {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					return testValue, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -486,10 +452,10 @@ func (self *InjectorTests) TestCallStoredLazyProvider() {
 					lazyProvider = value
 					return testValue + 1, Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(func() int { return 0 }),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -511,7 +477,7 @@ func (self *InjectorTests) TestProvideFunctionAlias() {
 				provider: reflect.ValueOf(func() (FuncAlias, Annotation1) {
 					return func() int { return testValue }, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -521,10 +487,10 @@ func (self *InjectorTests) TestProvideFunctionAlias() {
 				provider: reflect.ValueOf(func(value FuncAlias, _ Annotation1) (FuncAlias, Annotation2) {
 					return func() int { return value() + 1 }, Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(FuncAlias(nil)),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -547,7 +513,7 @@ func (self *InjectorTests) TestGetTransitive() {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					return testValue, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -557,10 +523,10 @@ func (self *InjectorTests) TestGetTransitive() {
 				provider: reflect.ValueOf(func(value int, _ Annotation1) (int, Annotation2) {
 					return value * 2, Annotation2{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(int(0)),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -579,7 +545,7 @@ func (self *InjectorTests) TestGetTransitiveMultiple() {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					return testValue, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -589,7 +555,7 @@ func (self *InjectorTests) TestGetTransitiveMultiple() {
 				provider: reflect.ValueOf(func() (int, Annotation2) {
 					return testValue * 2, Annotation2{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 			{
@@ -600,13 +566,13 @@ func (self *InjectorTests) TestGetTransitiveMultiple() {
 					value2 int, _ Annotation2) (int, Annotation3) {
 					return value1 + value2, Annotation3{}
 				}),
-				arguments: []providerArgument{{providerKey{
+				arguments: []providerKey{{
 					valueType:      reflect.TypeOf(int(0)),
 					annotationType: reflect.TypeOf(Annotation1{}),
-				}, nil}, {providerKey{
+				}, {
 					valueType:      reflect.TypeOf(int(0)),
 					annotationType: reflect.TypeOf(Annotation2{}),
-				}, nil}},
+				}},
 				hasError: false,
 			},
 		},
@@ -625,7 +591,7 @@ func (self *InjectorTests) TestMustGet() {
 				provider: reflect.ValueOf(func() (int, Annotation1) {
 					return testValue, Annotation1{}
 				}),
-				arguments: []providerArgument{},
+				arguments: []providerKey{},
 				hasError:  false,
 			},
 		},
