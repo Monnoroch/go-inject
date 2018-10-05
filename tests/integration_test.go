@@ -160,48 +160,6 @@ func (self testValuesModule) ProvideValue2() (int, Annotation2) {
 	return testValue + 1, Annotation2{}
 }
 
-type testInjectedAnnotation struct{}
-
-type testDynamicAnnotationModule struct {
-	annotation inject.Annotation
-}
-
-func (self testDynamicAnnotationModule) ProvideDouble(
-	value int, _ testInjectedAnnotation,
-) (int64, testInjectedAnnotation) {
-	return int64(value) * 2, testInjectedAnnotation{}
-}
-
-func (self testDynamicAnnotationModule) ProvideAnnotation() (inject.Annotation, testInjectedAnnotation) {
-	return self.annotation, testInjectedAnnotation{}
-}
-
-type testSumModule struct{}
-
-func (self testSumModule) ProvideSum(
-	value1 int64, _ Annotation1,
-	value2 int64, _ Annotation2,
-) (int64, Annotation3) {
-	return value1 + value2, Annotation3{}
-}
-
-func (self *IntegrationTests) TestDynamicAnnotations() {
-	injector, err := inject.InjectorOf(
-		testValuesModule{},
-		testDynamicAnnotationModule{Annotation1{}},
-		testDynamicAnnotationModule{Annotation2{}},
-		testSumModule{},
-	)
-	self.Require().Nil(err)
-
-	value1 := injector.MustGet(new(int64), Annotation1{}).(int64)
-	value2 := injector.MustGet(new(int64), Annotation2{}).(int64)
-	value3 := injector.MustGet(new(int64), Annotation3{}).(int64)
-	self.Equal(int64(testValue*2), value1)
-	self.Equal(int64((testValue+1)*2), value2)
-	self.Equal(int64(value1+value2), value3)
-}
-
 func (self *IntegrationTests) TestAutoInject() {
 	type Struct1 struct {
 		Value1 int
