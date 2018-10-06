@@ -1,3 +1,5 @@
+/// autoinject extends go-inject library with a way to automatically generate a provider
+/// for a struct type.
 package autoinject
 
 import (
