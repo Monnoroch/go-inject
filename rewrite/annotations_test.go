@@ -146,12 +146,12 @@ func (self testErrorModule) Providers() ([]inject.Provider, error) {
 
 func (self *RewriteAnnotationsTests) TestProvidersError() {
 	testError := errors.New("test error")
-	_, err := SubstituteAnnotations(testErrorModule{testError}, map[inject.Annotation]inject.Annotation{}).Providers()
+	_, err := RewriteAnnotations(testErrorModule{testError}, map[inject.Annotation]inject.Annotation{}).Providers()
 	self.Equal(testError, err)
 }
 
 func (self *RewriteAnnotationsTests) TestInvalidProvider() {
-	_, err := SubstituteAnnotations(
+	_, err := RewriteAnnotations(
 		testModuleWithProviders{[]inject.Provider{inject.NewProvider(0)}},
 		map[inject.Annotation]inject.Annotation{},
 	).Providers()
@@ -162,7 +162,7 @@ func (self *RewriteAnnotationsTests) getProviders(
 	module inject.Module,
 	annotationsToRewrite map[inject.Annotation]inject.Annotation,
 ) []inject.Provider {
-	providers, err := SubstituteAnnotations(module, annotationsToRewrite).Providers()
+	providers, err := RewriteAnnotations(module, annotationsToRewrite).Providers()
 	self.Require().Nil(err)
 	return providers
 }

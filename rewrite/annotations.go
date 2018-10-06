@@ -1,3 +1,4 @@
+/// rewrite provides tools to dynamically transform modules to chenge their providers using reflection.
 package rewrite
 
 import (
@@ -9,7 +10,7 @@ import (
 
 /// Generate a module that takes all input module's providers and replaces specified annotations
 /// according to the `annotationsToRewrite` map.
-func SubstituteAnnotations(
+func RewriteAnnotations(
 	module inject.Module,
 	annotationsToRewrite map[inject.Annotation]inject.Annotation,
 ) inject.DynamicModule {
