@@ -19,7 +19,7 @@ func (self *AutoInjectTests) TestEmptyStruct() {
 	type Struct struct{}
 
 	provider := self.getProvider(AutoInjectModule(new(Struct)))
-	self.False(provider.Cached)
+	self.False(provider.IsCached())
 
 	value, annotation := self.call(provider, []reflect.Value{})
 
@@ -37,7 +37,7 @@ func (self *AutoInjectTests) TestStructWithFields() {
 	}
 
 	provider := self.getProvider(AutoInjectModule(new(Struct)))
-	self.False(provider.Cached)
+	self.False(provider.IsCached())
 
 	value, annotation := self.call(provider, []reflect.Value{
 		reflect.ValueOf(int(testValue)), reflect.ValueOf(Auto{}),
@@ -158,12 +158,12 @@ func (self *AutoInjectTests) TestCustomAutoInjectable() {
 
 func (self *AutoInjectTests) TestCached() {
 	provider := self.getProvider(AutoInjectModule(new(struct{})).Cached())
-	self.True(provider.Cached)
+	self.True(provider.IsCached())
 }
 
 func (self *AutoInjectTests) TestNotCached() {
 	provider := self.getProvider(AutoInjectModule(new(struct{})).Cached().NotCached())
-	self.False(provider.Cached)
+	self.False(provider.IsCached())
 }
 
 func (self *AutoInjectTests) TestPrimitive() {
@@ -185,10 +185,7 @@ func (self *AutoInjectTests) getProvider(module inject.DynamicModule) inject.Pro
 }
 
 func (self *AutoInjectTests) call(provider inject.Provider, arguments []reflect.Value) (interface{}, interface{}) {
-	function, ok := provider.Function.(reflect.Value)
-	self.True(ok)
-
-	outputs := function.Call(arguments)
+	outputs := provider.Function().Call(arguments)
 	self.Equal(2, len(outputs))
 
 	return outputs[0].Interface(), outputs[1].Interface()

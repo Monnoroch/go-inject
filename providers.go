@@ -27,40 +27,27 @@ func buildProviders(module Module) (*providersData, error) {
 		providers: map[providerKey]providerData{},
 	}
 	for _, module := range flattenModule(module) {
-		dynamicModule, ok := module.(DynamicModule)
-		if !ok {
-			dynamicModule = staticProvidersModule{module}
-		}
-		if err := buildProvidersFromDynamicModule(dynamicModule, providers); err != nil {
+		dynamicProviders, err := Providers(module)
+		if err != nil {
 			return nil, err
+		}
+
+		for _, dynamicProvider := range dynamicProviders {
+			if err := buildProvidersFromDynamicProvider(dynamicProvider, providers); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return providers, nil
 }
 
-func buildProvidersFromDynamicModule(module DynamicModule, providers *providersData) error {
-	dynamicProviders, err := module.Providers()
-	if err != nil {
-		return err
-	}
-
-	for _, dynamicProvider := range dynamicProviders {
-		if err := buildProvidersFromDynamicProvider(dynamicProvider, providers); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func buildProvidersFromDynamicProvider(dynamicProvider Provider, providers *providersData) error {
-	function, ok := dynamicProvider.Function.(reflect.Value)
-	if !ok {
-		function = reflect.ValueOf(dynamicProvider.Function)
-	}
-	functionType := function.Type()
-	if !isProviderFunction(functionType) && !isProviderWithErrorFunction(functionType) {
+	if !dynamicProvider.IsValid() {
 		return fmt.Errorf("%#v is an invalid provider.", dynamicProvider)
 	}
+
+	function := dynamicProvider.Function()
+	functionType := function.Type()
 
 	arguments := make([]providerKey, 0, functionType.NumIn()/2)
 	for inputIndex := 0; inputIndex < functionType.NumIn(); inputIndex += 2 {
@@ -75,7 +62,7 @@ func buildProvidersFromDynamicProvider(dynamicProvider Provider, providers *prov
 	provider := providerData{
 		provider:  function,
 		arguments: arguments,
-		cached:    dynamicProvider.Cached,
+		cached:    dynamicProvider.cached,
 		hasError:  functionType.NumOut() == 3,
 	}
 	key := providerKey{
@@ -96,7 +83,7 @@ func buildProvidersFromDynamicProvider(dynamicProvider Provider, providers *prov
 var globalAnnotationType = reflect.TypeOf((*Annotation)(nil)).Elem()
 var globalErrorType = reflect.TypeOf((*error)(nil)).Elem()
 
-func isProviderFunction(methodType reflect.Type) bool {
+func isProvider(methodType reflect.Type) bool {
 	if methodType.Kind() != reflect.Func {
 		return false
 	}
@@ -106,7 +93,7 @@ func isProviderFunction(methodType reflect.Type) bool {
 	return hasAnnotationOutput(methodType) && hasInputsWithAnnotations(methodType)
 }
 
-func isProviderWithErrorFunction(methodType reflect.Type) bool {
+func isProviderWithError(methodType reflect.Type) bool {
 	if methodType.Kind() != reflect.Func {
 		return false
 	}

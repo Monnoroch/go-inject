@@ -26,10 +26,7 @@ func (self testProviderModule) Provide() (int32, int64) {
 func (self *StaticProvidersTests) TestProvider() {
 	module := testProviderModule{}
 	providers := self.getProviders(module)
-	self.Equal([]Provider{{
-		Function: reflect.ValueOf(module).MethodByName("Provide"),
-		Cached:   false,
-	}}, providers)
+	self.Equal([]Provider{NewProvider(reflect.ValueOf(module).MethodByName("Provide"))}, providers)
 }
 
 type testCachedProviderModule struct{}
@@ -41,10 +38,7 @@ func (self testCachedProviderModule) ProvideCached() (int32, int64) {
 func (self *StaticProvidersTests) TestCachedProvider() {
 	module := testCachedProviderModule{}
 	providers := self.getProviders(module)
-	self.Equal([]Provider{{
-		Function: reflect.ValueOf(module).MethodByName("ProvideCached"),
-		Cached:   true,
-	}}, providers)
+	self.Equal([]Provider{NewProvider(reflect.ValueOf(module).MethodByName("ProvideCached")).Cached(true)}, providers)
 }
 
 type testBadMethodNameModule struct{}
@@ -56,45 +50,12 @@ func (self *StaticProvidersTests) TestBadMethodName() {
 	self.Contains(err.Error(), "not a module")
 }
 
-type testNoResultMethodModule struct{}
+type testInvalidMethodModule struct{}
 
-func (self testNoResultMethodModule) ProvideInvalid() {}
+func (self testInvalidMethodModule) ProvideInvalid() {}
 
-func (self *StaticProvidersTests) TestNoResultMethod() {
-	_, err := staticProvidersModule{testNoResultMethodModule{}}.Providers()
-	self.Contains(err.Error(), "not a module")
-}
-
-type testNoAnnotationMethodModule struct{}
-
-func (self testNoAnnotationMethodModule) ProvideInvalid() int {
-	return 0
-}
-
-func (self *StaticProvidersTests) TestNoAnnotationMethod() {
-	_, err := staticProvidersModule{testNoAnnotationMethodModule{}}.Providers()
-	self.Contains(err.Error(), "not a module")
-}
-
-type testInvalidErrorTypeMethodModule struct{}
-
-func (self testInvalidErrorTypeMethodModule) ProvideInvalid() (int, int, int) {
-	return 0, 0, 0
-}
-
-func (self *StaticProvidersTests) TestInvalidErrorTypeMethod() {
-	_, err := staticProvidersModule{testInvalidErrorTypeMethodModule{}}.Providers()
-	self.Contains(err.Error(), "not a module")
-}
-
-type testArgumentWithoutAnnotationMethodModule struct{}
-
-func (self testArgumentWithoutAnnotationMethodModule) ProvideInvalid(_ int) (int, int) {
-	return 0, 0
-}
-
-func (self *StaticProvidersTests) TestArgumentWithoutAnnotationMethod() {
-	_, err := staticProvidersModule{testArgumentWithoutAnnotationMethodModule{}}.Providers()
+func (self *StaticProvidersTests) TestInvalidMethod() {
+	_, err := staticProvidersModule{testInvalidMethodModule{}}.Providers()
 	self.Contains(err.Error(), "not a module")
 }
 
