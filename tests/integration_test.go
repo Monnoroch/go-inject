@@ -7,6 +7,7 @@ import (
 
 	"github.com/monnoroch/go-inject"
 	"github.com/monnoroch/go-inject/auto"
+	"github.com/monnoroch/go-inject/rewrite"
 )
 
 const testValue = 17
@@ -255,6 +256,45 @@ func (self *IntegrationTests) TestAutoInjectDefaultAnnotations() {
 		},
 		value,
 	)
+}
+
+type testInjectedAnnotation struct{}
+
+type testDynamicAnnotationModule struct{}
+
+func (self testDynamicAnnotationModule) ProvideDouble(
+	value int, _ testInjectedAnnotation,
+) (int64, testInjectedAnnotation) {
+	return int64(value) * 2, testInjectedAnnotation{}
+}
+
+type testSumModule struct{}
+
+func (self testSumModule) ProvideSum(
+	value1 int64, _ Annotation1,
+	value2 int64, _ Annotation2,
+) (int64, Annotation3) {
+	return value1 + value2, Annotation3{}
+}
+
+func (self *IntegrationTests) TestDynamicAnnotations() {
+	injector, err := inject.InjectorOf(
+		testValuesModule{},
+		rewrite.RewriteAnnotations(testDynamicAnnotationModule{}, map[inject.Annotation]inject.Annotation{
+			testInjectedAnnotation{}: Annotation1{},
+		}),
+		rewrite.RewriteAnnotations(testDynamicAnnotationModule{}, map[inject.Annotation]inject.Annotation{
+			testInjectedAnnotation{}: Annotation2{},
+		}),
+		testSumModule{},
+	)
+	self.Require().Nil(err)
+	value1 := injector.MustGet(new(int64), Annotation1{}).(int64)
+	value2 := injector.MustGet(new(int64), Annotation2{}).(int64)
+	value3 := injector.MustGet(new(int64), Annotation3{}).(int64)
+	self.Equal(int64(testValue*2), value1)
+	self.Equal(int64((testValue+1)*2), value2)
+	self.Equal(int64(value1+value2), value3)
 }
 
 func TestIntegration(t *testing.T) {
