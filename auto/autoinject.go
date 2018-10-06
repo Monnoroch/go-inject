@@ -91,8 +91,8 @@ func (self autoInjectModule) Providers() ([]inject.Provider, error) {
 		}
 		providerArgumentTypes = append(providerArgumentTypes, field.Type, fieldAnnotationType)
 	}
-	provider := inject.Provider{
-		Function: reflect.MakeFunc(
+	provider := inject.NewProvider(
+		reflect.MakeFunc(
 			reflect.FuncOf(
 				providerArgumentTypes,
 				[]reflect.Type{valueType, annotationType},
@@ -109,8 +109,7 @@ func (self autoInjectModule) Providers() ([]inject.Provider, error) {
 				return []reflect.Value{result, reflect.Zero(annotationType)}
 			},
 		),
-		Cached: self.cached,
-	}
+	).Cached(self.cached)
 	return []inject.Provider{provider}, nil
 }
 

@@ -32,10 +32,7 @@ func (self *BuildProvidersTests) TestNoArgumentsProvider() {
 	function := func() (int, testAnnotation1) {
 		return 0, testAnnotation1{}
 	}
-	providers := self.buildProviders(testModuleWithProviders{[]Provider{{
-		Function: function,
-		Cached:   false,
-	}}})
+	providers := self.buildProviders(testModuleWithProviders{[]Provider{NewProvider(function)}})
 	self.Equal(map[providerKey]providerData{
 		{
 			valueType:      reflect.TypeOf(int(0)),
@@ -51,10 +48,7 @@ func (self *BuildProvidersTests) TestReflectValueProvider() {
 	function := func() (int, testAnnotation1) {
 		return 0, testAnnotation1{}
 	}
-	providers := self.buildProviders(testModuleWithProviders{[]Provider{{
-		Function: reflect.ValueOf(function),
-		Cached:   false,
-	}}})
+	providers := self.buildProviders(testModuleWithProviders{[]Provider{NewProvider(reflect.ValueOf(function))}})
 	self.Equal(map[providerKey]providerData{
 		{
 			valueType:      reflect.TypeOf(int(0)),
@@ -90,10 +84,7 @@ func (self *BuildProvidersTests) TestProviderWithArguments() {
 	function := func(_ bool, _ testAnnotation2) (int, testAnnotation1) {
 		return 0, testAnnotation1{}
 	}
-	providers := self.buildProviders(testModuleWithProviders{[]Provider{{
-		Function: function,
-		Cached:   false,
-	}}})
+	providers := self.buildProviders(testModuleWithProviders{[]Provider{NewProvider(function)}})
 	self.Equal(map[providerKey]providerData{
 		{
 			valueType:      reflect.TypeOf(int(0)),
@@ -112,10 +103,7 @@ func (self *BuildProvidersTests) TestProviderWithError() {
 	function := func() (int, testAnnotation1, error) {
 		return 0, testAnnotation1{}, nil
 	}
-	providers := self.buildProviders(testModuleWithProviders{[]Provider{{
-		Function: function,
-		Cached:   false,
-	}}})
+	providers := self.buildProviders(testModuleWithProviders{[]Provider{NewProvider(function)}})
 	self.Equal(map[providerKey]providerData{
 		{
 			valueType:      reflect.TypeOf(int(0)),
@@ -132,10 +120,7 @@ func (self *BuildProvidersTests) TestCachedProvider() {
 	function := func() (int, testAnnotation1) {
 		return 0, testAnnotation1{}
 	}
-	providers := self.buildProviders(testModuleWithProviders{[]Provider{{
-		Function: function,
-		Cached:   true,
-	}}})
+	providers := self.buildProviders(testModuleWithProviders{[]Provider{NewProvider(function).Cached(true)}})
 	self.Equal(map[providerKey]providerData{
 		{
 			valueType:      reflect.TypeOf(int(0)),
@@ -155,13 +140,10 @@ func (self *BuildProvidersTests) TestMultipleModules() {
 	function2 := func() (int, testAnnotation2) {
 		return 0, testAnnotation2{}
 	}
-	providers := self.buildProviders(CombineModules(testModuleWithProviders{[]Provider{{
-		Function: function1,
-		Cached:   false,
-	}}}, testModuleWithProviders{[]Provider{{
-		Function: function2,
-		Cached:   false,
-	}}}))
+	providers := self.buildProviders(CombineModules(
+		testModuleWithProviders{[]Provider{NewProvider(function1)}},
+		testModuleWithProviders{[]Provider{NewProvider(function2)}},
+	))
 	self.Equal(map[providerKey]providerData{
 		{
 			valueType:      reflect.TypeOf(int(0)),
@@ -184,13 +166,10 @@ func (self *BuildProvidersTests) TestDuplicatedProvider() {
 	function := func() (int, testAnnotation1) {
 		return 0, testAnnotation1{}
 	}
-	providers := self.buildProviders(testModuleWithProviders{[]Provider{{
-		Function: function,
-		Cached:   false,
-	}, {
-		Function: function,
-		Cached:   false,
-	}}})
+	providers := self.buildProviders(testModuleWithProviders{[]Provider{
+		NewProvider(function),
+		NewProvider(function),
+	}})
 	self.Equal(map[providerKey]providerData{
 		{
 			valueType:      reflect.TypeOf(int(0)),
@@ -203,78 +182,30 @@ func (self *BuildProvidersTests) TestDuplicatedProvider() {
 }
 
 func (self *BuildProvidersTests) TestDuplicatedProviders() {
-	err := self.buildProvidersError(testModuleWithProviders{[]Provider{{
-		Function: func() (int, testAnnotation1) {
+	err := self.buildProvidersError(testModuleWithProviders{[]Provider{
+		NewProvider(func() (int, testAnnotation1) {
 			return 0, testAnnotation1{}
-		},
-		Cached: true,
-	}, {
-		Function: func() (int, testAnnotation1) {
+		}), NewProvider(func() (int, testAnnotation1) {
 			return 0, testAnnotation1{}
-		},
-		Cached: true,
-	}}})
+		}),
+	}})
 	self.Contains(err.Error(), "Duplicate providers for key")
 }
 
 func (self *BuildProvidersTests) TestDuplicatedProvidersAcrossModules() {
-	err := self.buildProvidersError(CombineModules(testModuleWithProviders{[]Provider{{
-		Function: func() (int, testAnnotation1) {
+	err := self.buildProvidersError(CombineModules(
+		testModuleWithProviders{[]Provider{NewProvider(func() (int, testAnnotation1) {
 			return 0, testAnnotation1{}
-		},
-		Cached: true,
-	}}}, testModuleWithProviders{[]Provider{{
-		Function: func() (int, testAnnotation1) {
+		})}},
+		testModuleWithProviders{[]Provider{NewProvider(func() (int, testAnnotation1) {
 			return 0, testAnnotation1{}
-		},
-		Cached: true,
-	}}}))
+		})}},
+	))
 	self.Contains(err.Error(), "Duplicate providers for key")
 }
 
-func (self *BuildProvidersTests) TestNotAFunction() {
-	err := self.buildProvidersError(testModuleWithProviders{[]Provider{{
-		Function: 0,
-		Cached:   true,
-	}}})
-	self.Contains(err.Error(), "invalid provider")
-}
-
-func (self *BuildProvidersTests) TestNoResultFunction() {
-	err := self.buildProvidersError(testModuleWithProviders{[]Provider{{
-		Function: func() {},
-		Cached:   true,
-	}}})
-	self.Contains(err.Error(), "invalid provider")
-}
-
-func (self *BuildProvidersTests) TestNoAnnotationFunction() {
-	err := self.buildProvidersError(testModuleWithProviders{[]Provider{{
-		Function: func() int {
-			return 0
-		},
-		Cached: true,
-	}}})
-	self.Contains(err.Error(), "invalid provider")
-}
-
-func (self *BuildProvidersTests) TestInvalidErrorTypeFunction() {
-	err := self.buildProvidersError(testModuleWithProviders{[]Provider{{
-		Function: func() (int, testAnnotation1, int) {
-			return 0, testAnnotation1{}, 0
-		},
-		Cached: true,
-	}}})
-	self.Contains(err.Error(), "invalid provider")
-}
-
-func (self *BuildProvidersTests) TestArgumentWithoutAnnotationFunction() {
-	err := self.buildProvidersError(testModuleWithProviders{[]Provider{{
-		Function: func(_ int) (int, testAnnotation1) {
-			return 0, testAnnotation1{}
-		},
-		Cached: true,
-	}}})
+func (self *BuildProvidersTests) TestInvalidProvider() {
+	err := self.buildProvidersError(testModuleWithProviders{[]Provider{NewProvider(0)}})
 	self.Contains(err.Error(), "invalid provider")
 }
 
