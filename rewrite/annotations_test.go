@@ -12,6 +12,8 @@ import (
 
 const testValue = 17
 
+var testError = errors.New("test error")
+
 type testAnnotation1 struct{}
 type testAnnotation2 struct{}
 type testAnnotation3 struct{}
@@ -74,6 +76,49 @@ func (self *RewriteAnnotationsTests) TestProviderWithArguments() {
 	self.True(ok)
 }
 
+func (self *RewriteAnnotationsTests) TestProviderWithError() {
+	providers := self.getProviders(
+		testModuleWithProviders{[]inject.Provider{inject.NewProvider(
+			func() (int, testAnnotation1, error) {
+				return testValue, testAnnotation1{}, nil
+			},
+		)}},
+		map[inject.Annotation]inject.Annotation{},
+	)
+	self.Equal(1, len(providers))
+	provider := providers[0]
+	self.False(provider.IsCached())
+
+	value, annotation, err := self.callError(provider, []reflect.Value{})
+
+	self.Nil(err)
+	self.Equal(testValue, value)
+
+	_, ok := annotation.(testAnnotation1)
+	self.True(ok)
+}
+
+func (self *RewriteAnnotationsTests) TestProviderReturnsError() {
+	providers := self.getProviders(
+		testModuleWithProviders{[]inject.Provider{inject.NewProvider(
+			func() (int, testAnnotation1, error) {
+				return testValue, testAnnotation1{}, testError
+			},
+		)}},
+		map[inject.Annotation]inject.Annotation{},
+	)
+	self.Equal(1, len(providers))
+	provider := providers[0]
+	self.False(provider.IsCached())
+
+	_, annotation, err := self.callError(provider, []reflect.Value{})
+
+	self.Equal(testError, err)
+
+	_, ok := annotation.(testAnnotation1)
+	self.True(ok)
+}
+
 func (self *RewriteAnnotationsTests) TestReplaceNoArgumentsProvider() {
 	providers := self.getProviders(
 		testModuleWithProviders{[]inject.Provider{inject.NewProvider(
@@ -125,6 +170,55 @@ func (self *RewriteAnnotationsTests) TestReplaceProviderWithArguments() {
 	self.True(ok)
 }
 
+func (self *RewriteAnnotationsTests) TestReplaceProviderWithError() {
+	providers := self.getProviders(
+		testModuleWithProviders{[]inject.Provider{inject.NewProvider(
+			func() (int, testAnnotation1, error) {
+				return testValue, testAnnotation1{}, nil
+			},
+		)}},
+		map[inject.Annotation]inject.Annotation{
+			testAnnotation1{}: testAnnotation3{},
+			testAnnotation2{}: testAnnotation4{},
+		},
+	)
+	self.Equal(1, len(providers))
+	provider := providers[0]
+	self.False(provider.IsCached())
+
+	value, annotation, err := self.callError(provider, []reflect.Value{})
+
+	self.Nil(err)
+	self.Equal(testValue, value)
+
+	_, ok := annotation.(testAnnotation3)
+	self.True(ok)
+}
+
+func (self *RewriteAnnotationsTests) TestReplaceProviderReturnsError() {
+	providers := self.getProviders(
+		testModuleWithProviders{[]inject.Provider{inject.NewProvider(
+			func() (int, testAnnotation1, error) {
+				return testValue, testAnnotation1{}, testError
+			},
+		)}},
+		map[inject.Annotation]inject.Annotation{
+			testAnnotation1{}: testAnnotation3{},
+			testAnnotation2{}: testAnnotation4{},
+		},
+	)
+	self.Equal(1, len(providers))
+	provider := providers[0]
+	self.False(provider.IsCached())
+
+	_, annotation, err := self.callError(provider, []reflect.Value{})
+
+	self.Equal(testError, err)
+
+	_, ok := annotation.(testAnnotation3)
+	self.True(ok)
+}
+
 func (self *RewriteAnnotationsTests) TestCachedProvider() {
 	providers := self.getProviders(
 		testModuleWithProviders{[]inject.Provider{inject.NewProvider(func() (int, testAnnotation1) {
@@ -145,7 +239,6 @@ func (self testErrorModule) Providers() ([]inject.Provider, error) {
 }
 
 func (self *RewriteAnnotationsTests) TestProvidersError() {
-	testError := errors.New("test error")
 	_, err := RewriteAnnotations(testErrorModule{testError}, map[inject.Annotation]inject.Annotation{}).Providers()
 	self.Equal(testError, err)
 }
@@ -174,6 +267,21 @@ func (self *RewriteAnnotationsTests) call(
 	outputs := provider.Function().Call(arguments)
 	self.Equal(2, len(outputs))
 	return outputs[0].Interface(), outputs[1].Interface()
+}
+
+func (self *RewriteAnnotationsTests) callError(
+	provider inject.Provider,
+	arguments []reflect.Value,
+) (interface{}, interface{}, error) {
+	outputs := provider.Function().Call(arguments)
+	self.Require().Equal(3, len(outputs))
+	var err error
+	if outputs[2].Interface() != nil {
+		outputErr, ok := outputs[2].Interface().(error)
+		self.Require().True(ok)
+		err = outputErr
+	}
+	return outputs[0].Interface(), outputs[1].Interface(), err
 }
 
 func TestRewriteAnnotations(t *testing.T) {
