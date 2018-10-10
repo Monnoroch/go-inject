@@ -61,10 +61,15 @@ func (self rewriteAnnotationsModule) Providers() ([]inject.Provider, error) {
 			annotationType = rewrittenType
 		}
 
+		returnTypes := []reflect.Type{valueType, annotationType}
+		// Provider with an error.
+		if functionType.NumOut() == 3 {
+			returnTypes = append(returnTypes, reflect.TypeOf((*error)(nil)).Elem())
+		}
 		newProviders[index] = inject.NewProvider(reflect.MakeFunc(
 			reflect.FuncOf(
 				providerArgumentTypes,
-				[]reflect.Type{valueType, annotationType},
+				returnTypes,
 				false,
 			),
 			func(arguments []reflect.Value) []reflect.Value {
