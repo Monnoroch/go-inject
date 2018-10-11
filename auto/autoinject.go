@@ -22,19 +22,19 @@ type AutoInjectable interface {
 }
 
 type autoInjectModule struct {
-	typePointer interface{}
-	annotation  inject.Annotation
-	annotations interface{}
-	cached      bool
+	typePointer      interface{}
+	annotation       inject.Annotation
+	fieldAnnotations interface{}
+	cached           bool
 }
 
 /// Create a module for automatically providing a struct type with the default `autoinject.Auto` annotation.
 func AutoInjectModule(typePointer interface{}) autoInjectModule {
 	return autoInjectModule{
-		typePointer: typePointer,
-		annotation:  Auto{},
-		annotations: struct{}{},
-		cached:      false,
+		typePointer:      typePointer,
+		annotation:       Auto{},
+		fieldAnnotations: struct{}{},
+		cached:           false,
 	}
 }
 
@@ -45,8 +45,8 @@ func (self autoInjectModule) WithAnnotation(annotation inject.Annotation) autoIn
 }
 
 /// Auto-inject the value with a custom annotation.
-func (self autoInjectModule) WithAnnotations(annotations interface{}) autoInjectModule {
-	self.annotations = annotations
+func (self autoInjectModule) WithFieldAnnotations(fieldAnnotations interface{}) autoInjectModule {
+	self.fieldAnnotations = fieldAnnotations
 	return self
 }
 
@@ -77,10 +77,10 @@ func (self autoInjectModule) Providers() ([]inject.Provider, error) {
 	annotationByField := map[string]reflect.Type{}
 	if valueType.Implements(autoInjectableType) {
 		asAutoInjectable := reflect.ValueOf(self.typePointer).Elem().Interface().(AutoInjectable)
-		defaultAnnotations := asAutoInjectable.ProvideAutoInjectAnnotations()
-		extractAnnotations(defaultAnnotations, annotationByField)
+		defaultFieldAnnotations := asAutoInjectable.ProvideAutoInjectAnnotations()
+		extractFieldAnnotations(defaultFieldAnnotations, annotationByField)
 	}
-	extractAnnotations(self.annotations, annotationByField)
+	extractFieldAnnotations(self.fieldAnnotations, annotationByField)
 
 	providerArgumentTypes := []reflect.Type{}
 	for i := 0; i < dereferencedValueType.NumField(); i += 1 {
@@ -120,10 +120,13 @@ func getDereferencedType(valueType reflect.Type) (reflect.Type, bool) {
 	return valueType, false
 }
 
-func extractAnnotations(annotationsStruct interface{}, annotationByField map[string]reflect.Type) {
-	annotations := reflect.TypeOf(annotationsStruct)
-	for i := 0; i < annotations.NumField(); i += 1 {
-		field := annotations.Field(i)
+func extractFieldAnnotations(
+	fieldAnnotationsStruct interface{},
+	annotationByField map[string]reflect.Type,
+) {
+	fieldAnnotations := reflect.TypeOf(fieldAnnotationsStruct)
+	for i := 0; i < fieldAnnotations.NumField(); i += 1 {
+		field := fieldAnnotations.Field(i)
 		annotationByField[field.Name] = field.Type
 	}
 }
