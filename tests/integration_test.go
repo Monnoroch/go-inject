@@ -169,7 +169,7 @@ func (self *IntegrationTests) TestAutoInject() {
 	}
 	injector, err := inject.InjectorOf(
 		testValuesModule{},
-		autoinject.AutoInjectModule(new(Struct1)).WithAnnotations(struct {
+		autoinject.AutoInjectModule(new(Struct1)).WithFieldAnnotations(struct {
 			Value1 Annotation1
 			Value2 Annotation2
 		}{}),
@@ -201,15 +201,15 @@ func (self *IntegrationTests) TestAutoInjectRecursive() {
 	}
 	injector, err := inject.InjectorOf(
 		testValuesModule{},
-		autoinject.AutoInjectModule(new(Struct1)).WithAnnotations(struct {
+		autoinject.AutoInjectModule(new(Struct1)).WithFieldAnnotations(struct {
 			Value1 Annotation1
 			Value2 Annotation2
 		}{}),
-		autoinject.AutoInjectModule(new(Struct2)).WithAnnotations(struct {
+		autoinject.AutoInjectModule(new(Struct2)).WithFieldAnnotations(struct {
 			Value   Annotation2
 			Struct1 autoinject.Auto
 		}{}),
-		autoinject.AutoInjectModule(new(Struct3)).WithAnnotations(struct{}{}),
+		autoinject.AutoInjectModule(new(Struct3)).WithFieldAnnotations(struct{}{}),
 	)
 	self.Require().Nil(err)
 
@@ -244,7 +244,7 @@ func (self Struct1) ProvideAutoInjectAnnotations() interface{} {
 func (self *IntegrationTests) TestAutoInjectDefaultAnnotations() {
 	injector, err := inject.InjectorOf(
 		testValuesModule{},
-		autoinject.AutoInjectModule(new(Struct1)).WithAnnotation(Annotation3{}).WithAnnotations(struct{}{}),
+		autoinject.AutoInjectModule(new(Struct1)).WithAnnotation(Annotation3{}).WithFieldAnnotations(struct{}{}),
 	)
 	self.Require().Nil(err)
 

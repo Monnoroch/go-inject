@@ -91,7 +91,7 @@ func (self *AutoInjectTests) TestCustomAnnotations() {
 		Value int
 	}
 
-	provider := self.getProvider(AutoInjectModule(new(Struct)).WithAnnotations(struct {
+	provider := self.getProvider(AutoInjectModule(new(Struct)).WithFieldAnnotations(struct {
 		Value Annotation
 	}{}))
 	value, annotation := self.call(provider, []reflect.Value{
