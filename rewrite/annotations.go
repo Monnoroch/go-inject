@@ -8,11 +8,14 @@ import (
 	"github.com/monnoroch/go-inject"
 )
 
+/// Annotations mapping: a map from annotations to be replaced to annotations to replace them with.
+type AnnotationsMapping map[inject.Annotation]inject.Annotation
+
 /// Generate a module that takes all input module's providers and replaces specified annotations
 /// according to the `annotationsToRewrite` map.
 func RewriteAnnotations(
 	module inject.Module,
-	annotationsToRewrite map[inject.Annotation]inject.Annotation,
+	annotationsToRewrite AnnotationsMapping,
 ) inject.DynamicModule {
 	return rewriteAnnotationsModule{
 		module:               module,
@@ -22,7 +25,7 @@ func RewriteAnnotations(
 
 type rewriteAnnotationsModule struct {
 	module               inject.Module
-	annotationsToRewrite map[inject.Annotation]inject.Annotation
+	annotationsToRewrite AnnotationsMapping
 }
 
 func (self rewriteAnnotationsModule) Providers() ([]inject.Provider, error) {
