@@ -38,7 +38,7 @@ func (self *RewriteAnnotationsTests) TestNoArgumentsProvider() {
 				return testValue, testAnnotation1{}
 			},
 		)}},
-		map[inject.Annotation]inject.Annotation{},
+		AnnotationsMapping{},
 	)
 	self.Equal(1, len(providers))
 	provider := providers[0]
@@ -59,7 +59,7 @@ func (self *RewriteAnnotationsTests) TestProviderWithArguments() {
 				return value + 1, testAnnotation1{}
 			},
 		)}},
-		map[inject.Annotation]inject.Annotation{},
+		AnnotationsMapping{},
 	)
 	self.Equal(1, len(providers))
 	provider := providers[0]
@@ -83,7 +83,7 @@ func (self *RewriteAnnotationsTests) TestProviderWithError() {
 				return testValue, testAnnotation1{}, nil
 			},
 		)}},
-		map[inject.Annotation]inject.Annotation{},
+		AnnotationsMapping{},
 	)
 	self.Equal(1, len(providers))
 	provider := providers[0]
@@ -105,7 +105,7 @@ func (self *RewriteAnnotationsTests) TestProviderReturnsError() {
 				return testValue, testAnnotation1{}, testError
 			},
 		)}},
-		map[inject.Annotation]inject.Annotation{},
+		AnnotationsMapping{},
 	)
 	self.Equal(1, len(providers))
 	provider := providers[0]
@@ -126,7 +126,7 @@ func (self *RewriteAnnotationsTests) TestReplaceNoArgumentsProvider() {
 				return testValue, testAnnotation1{}
 			},
 		)}},
-		map[inject.Annotation]inject.Annotation{
+		AnnotationsMapping{
 			testAnnotation1{}: testAnnotation3{},
 			testAnnotation2{}: testAnnotation4{},
 		},
@@ -150,7 +150,7 @@ func (self *RewriteAnnotationsTests) TestReplaceProviderWithArguments() {
 				return value + 1, testAnnotation1{}
 			},
 		)}},
-		map[inject.Annotation]inject.Annotation{
+		AnnotationsMapping{
 			testAnnotation1{}: testAnnotation3{},
 			testAnnotation2{}: testAnnotation4{},
 		},
@@ -177,7 +177,7 @@ func (self *RewriteAnnotationsTests) TestReplaceProviderWithError() {
 				return testValue, testAnnotation1{}, nil
 			},
 		)}},
-		map[inject.Annotation]inject.Annotation{
+		AnnotationsMapping{
 			testAnnotation1{}: testAnnotation3{},
 			testAnnotation2{}: testAnnotation4{},
 		},
@@ -202,7 +202,7 @@ func (self *RewriteAnnotationsTests) TestReplaceProviderReturnsError() {
 				return testValue, testAnnotation1{}, testError
 			},
 		)}},
-		map[inject.Annotation]inject.Annotation{
+		AnnotationsMapping{
 			testAnnotation1{}: testAnnotation3{},
 			testAnnotation2{}: testAnnotation4{},
 		},
@@ -224,7 +224,7 @@ func (self *RewriteAnnotationsTests) TestCachedProvider() {
 		testModuleWithProviders{[]inject.Provider{inject.NewProvider(func() (int, testAnnotation1) {
 			return 0, testAnnotation1{}
 		}).Cached(true)}},
-		map[inject.Annotation]inject.Annotation{},
+		AnnotationsMapping{},
 	)
 	self.Equal(1, len(providers))
 	self.True(providers[0].IsCached())
@@ -239,21 +239,21 @@ func (self testErrorModule) Providers() ([]inject.Provider, error) {
 }
 
 func (self *RewriteAnnotationsTests) TestProvidersError() {
-	_, err := RewriteAnnotations(testErrorModule{testError}, map[inject.Annotation]inject.Annotation{}).Providers()
+	_, err := RewriteAnnotations(testErrorModule{testError}, AnnotationsMapping{}).Providers()
 	self.Equal(testError, err)
 }
 
 func (self *RewriteAnnotationsTests) TestInvalidProvider() {
 	_, err := RewriteAnnotations(
 		testModuleWithProviders{[]inject.Provider{inject.NewProvider(0)}},
-		map[inject.Annotation]inject.Annotation{},
+		AnnotationsMapping{},
 	).Providers()
 	self.Contains(err.Error(), "invalid provider")
 }
 
 func (self *RewriteAnnotationsTests) getProviders(
 	module inject.Module,
-	annotationsToRewrite map[inject.Annotation]inject.Annotation,
+	annotationsToRewrite AnnotationsMapping,
 ) []inject.Provider {
 	providers, err := RewriteAnnotations(module, annotationsToRewrite).Providers()
 	self.Require().Nil(err)

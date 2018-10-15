@@ -280,10 +280,10 @@ func (self testSumModule) ProvideSum(
 func (self *IntegrationTests) TestDynamicAnnotations() {
 	injector, err := inject.InjectorOf(
 		testValuesModule{},
-		rewrite.RewriteAnnotations(testDynamicAnnotationModule{}, map[inject.Annotation]inject.Annotation{
+		rewrite.RewriteAnnotations(testDynamicAnnotationModule{}, rewrite.AnnotationsMapping{
 			testInjectedAnnotation{}: Annotation1{},
 		}),
-		rewrite.RewriteAnnotations(testDynamicAnnotationModule{}, map[inject.Annotation]inject.Annotation{
+		rewrite.RewriteAnnotations(testDynamicAnnotationModule{}, rewrite.AnnotationsMapping{
 			testInjectedAnnotation{}: Annotation2{},
 		}),
 		testSumModule{},
