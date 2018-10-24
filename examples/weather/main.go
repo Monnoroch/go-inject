@@ -11,6 +11,7 @@ import (
 	"github.com/monnoroch/go-inject/auto"
 	"github.com/monnoroch/go-inject/examples/weather/ai"
 	"github.com/monnoroch/go-inject/examples/weather/blockchain"
+	"github.com/monnoroch/go-inject/examples/weather/constant"
 	grpcinject "github.com/monnoroch/go-inject/examples/weather/grpc"
 	proto "github.com/monnoroch/go-inject/examples/weather/proto"
 )
@@ -43,20 +44,6 @@ type WeatherPrediction struct{}
 /// A module for providing a configured weather prediction server.
 type weatherPredictionServerModule struct{}
 
-/// Provider returning the AI service endpoint, to be used by the gRPC client module.
-func (_ weatherPredictionServerModule) ProvideGrpcEndpoint() (string, ai.AiService) {
-	return "ai-service:80", ai.AiService{}
-}
-
-/// Provider returning the blockchain service endpoint, to be used by the gRPC client module.
-func (_ weatherPredictionServerModule) ProvideBlockchainGrpcEndpoint() (string, blockchain.BlockchainService) {
-	return "blockchain-service:80", blockchain.BlockchainService{}
-}
-
-func (_ weatherPredictionServerModule) ProvideIsDevelInstance() (bool, blockchain.BlockchainService) {
-	return true, blockchain.BlockchainService{} // TODO: make it into a flag
-}
-
 func (_ weatherPredictionServerModule) ProvideGrpcServer(
 	grpcServer *grpc.Server, _ grpcinject.GrpcServer,
 	weatherPredictionServer *Server, _ autoinject.Auto,
@@ -71,6 +58,9 @@ func (_ weatherPredictionServerModule) ProvideGrpcServer(
 func WeatherPredictionServerModule() inject.Module {
 	return inject.CombineModules(
 		weatherPredictionServerModule{},
+		constant.ConstantModule("ai-service:80", ai.AiService{}),
+		constant.ConstantModule("blockchain-service:80", blockchain.BlockchainService{}),
+		constant.ConstantModule(true, blockchain.BlockchainService{}),
 		autoinject.AutoInjectModule(new(*Server)),
 	)
 }
