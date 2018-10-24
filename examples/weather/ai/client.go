@@ -40,7 +40,7 @@ type AiService struct{}
 /// A module for providing AI service client components.
 type AiServiceClientModule struct{}
 
-func (_ AiServiceClientModule) ProvideGrpcClient(
+func (_ AiServiceClientModule) ProvideCachedGrpcClient(
 	connection *grpc.ClientConn, _ grpcinject.GrpcClient,
 ) (aiproto.AiClient, AiService) {
 	return aiproto.NewAiClient(connection), AiService{}
