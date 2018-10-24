@@ -6,9 +6,10 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/monnoroch/go-inject"
 	"github.com/monnoroch/go-inject/examples/weather/ai"
+	grpcinject "github.com/monnoroch/go-inject/examples/weather/grpc"
 	proto "github.com/monnoroch/go-inject/examples/weather/proto"
-	aiproto "github.com/monnoroch/go-inject/examples/weather/proto/ai"
 )
 
 /// The main server type for defining request handlers.
@@ -29,38 +30,33 @@ func (self *Server) Predict(
 	return &proto.Weather{Weather: weather}, nil
 }
 
-func AiServiceEndpoint() string {
+/// A module for providing a configured weather prediction server.
+type WeatherPredictionServerModule struct{}
+
+/// Provider returning the AI service endpoint, to be used by the gRPC client module.
+func (_ WeatherPredictionServerModule) ProvideGrpcEndpoint() string {
 	return "ai-service:80"
 }
 
-func NewAiServiceGrpcConnection(aiServiceEndpoint string) *grpc.ClientConn {
-	connection, _ := grpc.Dial(aiServiceEndpoint, grpc.WithInsecure())
-	return connection
-}
-
-func NewGrpcAiClient(connection *grpc.ClientConn) aiproto.AiClient {
-	return aiproto.NewAiClient(connection)
-}
-
-func NewAiClient(aiClient aiproto.AiClient) ai.AiClient {
-	return ai.AiClient{RawAiClient: aiClient}
-}
-
-func NewServer(client ai.AiClient) *Server {
+func (_ WeatherPredictionServerModule) ProvideServer(
+	client ai.AiClient,
+) *Server {
 	return &Server{AiClient: client}
 }
 
 func main() {
-	endpoint := AiServiceEndpoint()
-	connection := NewAiServiceGrpcConnection(endpoint)
-	aiClient := NewAiClient(NewGrpcAiClient(connection))
-	weatherPredictionServer := NewServer(aiClient)
+	injector, _ := inject.InjectorOf(
+		grpcinject.GrpcClientModule{},
+		ai.AiServiceClientModule{},
+		WeatherPredictionServerModule{},
+	)
+	weatherPredictionServer := injector.MustGet(new(*Server)).(*Server)
+
 	server := grpc.NewServer()
 	proto.RegisterWeatherPredictionServer(
 		server,
 		weatherPredictionServer,
 	)
-
 	listener, _ := net.Listen("tcp", ":80")
 	server.Serve(listener)
 }
