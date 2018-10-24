@@ -9,7 +9,6 @@ import (
 
 	"github.com/monnoroch/go-inject"
 	"github.com/monnoroch/go-inject/auto"
-	grpcinject "github.com/monnoroch/go-inject/examples/weather/grpc"
 	aiproto "github.com/monnoroch/go-inject/examples/weather/proto/ai"
 )
 
@@ -52,7 +51,7 @@ type private struct{}
 type aiServiceClientModule struct{}
 
 func (_ aiServiceClientModule) ProvideCachedGrpcClient(
-	connection *grpc.ClientConn, _ grpcinject.GrpcClient,
+	connection *grpc.ClientConn, _ AiService,
 ) (aiproto.AiClient, private) {
 	return aiproto.NewAiClient(connection), private{}
 }

@@ -44,13 +44,13 @@ type WeatherPrediction struct{}
 type weatherPredictionServerModule struct{}
 
 /// Provider returning the AI service endpoint, to be used by the gRPC client module.
-func (_ weatherPredictionServerModule) ProvideGrpcEndpoint() (string, grpcinject.GrpcClient) {
-	return "ai-service:80", grpcinject.GrpcClient{}
+func (_ weatherPredictionServerModule) ProvideGrpcEndpoint() (string, ai.AiService) {
+	return "ai-service:80", ai.AiService{}
 }
 
 /// Provider returning the blockchain service endpoint, to be used by the gRPC client module.
-func (_ weatherPredictionServerModule) ProvideBlockchainGrpcEndpoint() (string, grpcinject.GrpcClient) {
-	return "blockchain-service:80", grpcinject.GrpcClient{}
+func (_ weatherPredictionServerModule) ProvideBlockchainGrpcEndpoint() (string, blockchain.BlockchainService) {
+	return "blockchain-service:80", blockchain.BlockchainService{}
 }
 
 func (_ weatherPredictionServerModule) ProvideGrpcServer(
@@ -74,7 +74,8 @@ func WeatherPredictionServerModule() inject.Module {
 func main() {
 	injector, _ := inject.InjectorOf(
 		grpcinject.GrpcServerModule{},
-		grpcinject.GrpcClientModule{},
+		grpcinject.GrpcClientModule(ai.AiService{}),
+		grpcinject.GrpcClientModule(blockchain.BlockchainService{}),
 		ai.AiServiceClientModule(),
 		blockchain.BlockchainServiceClientModule(),
 		WeatherPredictionServerModule(),

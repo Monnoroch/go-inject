@@ -8,7 +8,6 @@ import (
 
 	"github.com/monnoroch/go-inject"
 	"github.com/monnoroch/go-inject/auto"
-	grpcinject "github.com/monnoroch/go-inject/examples/weather/grpc"
 	blockchainproto "github.com/monnoroch/go-inject/examples/weather/proto/blockchain"
 )
 
@@ -48,7 +47,7 @@ type private struct{}
 type blockchainServiceClientModule struct{}
 
 func (_ blockchainServiceClientModule) ProvideCachedGrpcClient(
-	connection *grpc.ClientConn, _ grpcinject.GrpcClient,
+	connection *grpc.ClientConn, _ BlockchainService,
 ) (blockchainproto.BlockchainClient, private) {
 	return blockchainproto.NewBlockchainClient(connection), private{}
 }

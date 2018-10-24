@@ -1,20 +1,31 @@
 package grpc
 
 import (
+	"github.com/monnoroch/go-inject"
+	"github.com/monnoroch/go-inject/rewrite"
 	"google.golang.org/grpc"
 )
 
 /// Annotation used by the gRPC client module.
-type GrpcClient struct{}
+type grpcClient struct{}
 
 /// A module for providing gRPC client components.
-type GrpcClientModule struct{}
+type grpcClientModule struct{}
 
-func (_ GrpcClientModule) ProvideConnection(
-	endpoint string, _ GrpcClient,
-) (*grpc.ClientConn, GrpcClient, error) {
+func (_ grpcClientModule) ProvideConnection(
+	endpoint string, _ grpcClient,
+) (*grpc.ClientConn, grpcClient, error) {
 	connection, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	return connection, GrpcClient{}, err
+	return connection, grpcClient{}, err
+}
+
+func GrpcClientModule(annotation inject.Annotation) inject.Module {
+	return rewrite.RewriteAnnotations(
+		grpcClientModule{},
+		rewrite.AnnotationsMapping{
+			grpcClient{}: annotation,
+		},
+	)
 }
 
 /// Annotation used by the gRPC server module.
