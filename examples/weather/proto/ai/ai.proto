@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package cloudprovider.apis.ai;
+
+service Ai {
+	rpc Ask(Question) returns (Answer) {}
+}
+
+message Question {
+	string question = 1;
+}
+
+message Answer {
+	string answer = 1;
+}

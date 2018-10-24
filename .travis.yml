@@ -13,6 +13,6 @@ install:
   - dep ensure -vendor-only
 script:
   - ci/lint.sh
-  - go test -v ./...
+  - go test -v `go list ./... | grep -v examples/weather`
 notifications:
   email: false

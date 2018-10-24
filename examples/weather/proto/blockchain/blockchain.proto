@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package blockchain;
+
+service Blockchain {
+	rpc Pay(PayRequest) returns (PayResponse) {}
+}
+
+message PayRequest {
+	int64 from = 1;
+	int64 to = 2;
+	int64 amount_micro_eth = 3;
+}
+
+message PayResponse {}

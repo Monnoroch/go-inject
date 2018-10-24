@@ -43,6 +43,7 @@ linter_config=(
   # golang tests should be run from the project CI
   --disable test
   --disable testify
+  --exclude examples/weather.*
 )
 
 echo gometalinter \
