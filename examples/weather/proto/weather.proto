@@ -9,6 +9,7 @@ service WeatherPrediction {
 message SpaceTimeLocation {
 	string location = 1;
 	int64 timestamp = 2;
+	int64 user_id = 3; // we don't have funding to refactor it into an enclosing message for readability
 }
 
 message Weather {

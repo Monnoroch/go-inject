@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"google.golang.org/grpc"
@@ -9,13 +10,15 @@ import (
 	"github.com/monnoroch/go-inject"
 	"github.com/monnoroch/go-inject/auto"
 	"github.com/monnoroch/go-inject/examples/weather/ai"
+	"github.com/monnoroch/go-inject/examples/weather/blockchain"
 	grpcinject "github.com/monnoroch/go-inject/examples/weather/grpc"
 	proto "github.com/monnoroch/go-inject/examples/weather/proto"
 )
 
 /// The main server type for defining request handlers.
 type Server struct {
-	AiClient ai.AiClient
+	AiClient         ai.AiClient
+	BlockchainClient blockchain.BlockchainClient
 }
 
 /// Handler for the WeatherPrediction.Predict RPCs.
@@ -23,6 +26,9 @@ func (self *Server) Predict(
 	ctx context.Context,
 	request *proto.SpaceTimeLocation,
 ) (*proto.Weather, error) {
+	if !self.BlockchainClient.Pay(ctx, request.GetUserId()) {
+		return &proto.Weather{}, errors.New("no money -- no weather!")
+	}
 	weather := self.AiClient.AskForWeather(
 		ctx,
 		request.GetLocation(),
@@ -40,6 +46,11 @@ type weatherPredictionServerModule struct{}
 /// Provider returning the AI service endpoint, to be used by the gRPC client module.
 func (_ weatherPredictionServerModule) ProvideGrpcEndpoint() (string, grpcinject.GrpcClient) {
 	return "ai-service:80", grpcinject.GrpcClient{}
+}
+
+/// Provider returning the blockchain service endpoint, to be used by the gRPC client module.
+func (_ weatherPredictionServerModule) ProvideBlockchainGrpcEndpoint() (string, grpcinject.GrpcClient) {
+	return "blockchain-service:80", grpcinject.GrpcClient{}
 }
 
 func (_ weatherPredictionServerModule) ProvideGrpcServer(
@@ -65,6 +76,7 @@ func main() {
 		grpcinject.GrpcServerModule{},
 		grpcinject.GrpcClientModule{},
 		ai.AiServiceClientModule(),
+		blockchain.BlockchainServiceClientModule(),
 		WeatherPredictionServerModule(),
 	)
 	server := injector.MustGet(
