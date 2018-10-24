@@ -7,6 +7,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/monnoroch/go-inject"
+	"github.com/monnoroch/go-inject/auto"
 	grpcinject "github.com/monnoroch/go-inject/examples/weather/grpc"
 	aiproto "github.com/monnoroch/go-inject/examples/weather/proto/ai"
 )
@@ -41,16 +43,21 @@ type AiService struct{}
 type private struct{}
 
 /// A module for providing AI service client components.
-type AiServiceClientModule struct{}
+type aiServiceClientModule struct{}
 
-func (_ AiServiceClientModule) ProvideCachedGrpcClient(
+func (_ aiServiceClientModule) ProvideCachedGrpcClient(
 	connection *grpc.ClientConn, _ grpcinject.GrpcClient,
 ) (aiproto.AiClient, private) {
 	return aiproto.NewAiClient(connection), private{}
 }
 
-func (_ AiServiceClientModule) ProvideAiClient(
-	client aiproto.AiClient, _ private,
-) (AiClient, AiService) {
-	return AiClient{RawAiClient: client}, AiService{}
+func AiServiceClientModule() inject.Module {
+	return inject.CombineModules(
+		aiServiceClientModule{},
+		autoinject.AutoInjectModule(new(AiClient)).
+			WithAnnotation(AiService{}).
+			WithFieldAnnotations(struct {
+				RawAiClient private
+			}{}),
+	)
 }

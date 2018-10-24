@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/monnoroch/go-inject"
+	"github.com/monnoroch/go-inject/auto"
 	"github.com/monnoroch/go-inject/examples/weather/ai"
 	grpcinject "github.com/monnoroch/go-inject/examples/weather/grpc"
 	proto "github.com/monnoroch/go-inject/examples/weather/proto"
@@ -34,20 +35,14 @@ func (self *Server) Predict(
 type WeatherPrediction struct{}
 
 /// A module for providing a configured weather prediction server.
-type WeatherPredictionServerModule struct{}
+type weatherPredictionServerModule struct{}
 
 /// Provider returning the AI service endpoint, to be used by the gRPC client module.
-func (_ WeatherPredictionServerModule) ProvideGrpcEndpoint() (string, grpcinject.GrpcClient) {
+func (_ weatherPredictionServerModule) ProvideGrpcEndpoint() (string, grpcinject.GrpcClient) {
 	return "ai-service:80", grpcinject.GrpcClient{}
 }
 
-func (_ WeatherPredictionServerModule) ProvideServer(
-	client ai.AiClient, _ ai.AiService,
-) (*Server, WeatherPrediction) {
-	return &Server{AiClient: client}, WeatherPrediction{}
-}
-
-func (_ WeatherPredictionServerModule) ProvideGrpcServer(
+func (_ weatherPredictionServerModule) ProvideGrpcServer(
 	grpcServer *grpc.Server, _ grpcinject.GrpcServer,
 	weatherPredictionServer *Server, _ WeatherPrediction,
 ) (*grpc.Server, WeatherPrediction) {
@@ -58,12 +53,23 @@ func (_ WeatherPredictionServerModule) ProvideGrpcServer(
 	return grpcServer, WeatherPrediction{}
 }
 
+func WeatherPredictionServerModule() inject.Module {
+	return inject.CombineModules(
+		weatherPredictionServerModule{},
+		autoinject.AutoInjectModule(new(*Server)).
+			WithAnnotation(WeatherPrediction{}).
+			WithFieldAnnotations(struct {
+				AiClient ai.AiService
+			}{}),
+	)
+}
+
 func main() {
 	injector, _ := inject.InjectorOf(
 		grpcinject.GrpcServerModule{},
 		grpcinject.GrpcClientModule{},
-		ai.AiServiceClientModule{},
-		WeatherPredictionServerModule{},
+		ai.AiServiceClientModule(),
+		WeatherPredictionServerModule(),
 	)
 	server := injector.MustGet(
 		new(*grpc.Server), WeatherPrediction{},
