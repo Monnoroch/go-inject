@@ -55,7 +55,6 @@ func AiServiceClientModule() inject.Module {
 	return inject.CombineModules(
 		aiServiceClientModule{},
 		autoinject.AutoInjectModule(new(AiClient)).
-			WithAnnotation(AiService{}).
 			WithFieldAnnotations(struct {
 				RawAiClient private
 			}{}),

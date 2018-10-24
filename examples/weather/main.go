@@ -44,7 +44,7 @@ func (_ weatherPredictionServerModule) ProvideGrpcEndpoint() (string, grpcinject
 
 func (_ weatherPredictionServerModule) ProvideGrpcServer(
 	grpcServer *grpc.Server, _ grpcinject.GrpcServer,
-	weatherPredictionServer *Server, _ WeatherPrediction,
+	weatherPredictionServer *Server, _ autoinject.Auto,
 ) (*grpc.Server, WeatherPrediction) {
 	proto.RegisterWeatherPredictionServer(
 		grpcServer,
@@ -56,11 +56,7 @@ func (_ weatherPredictionServerModule) ProvideGrpcServer(
 func WeatherPredictionServerModule() inject.Module {
 	return inject.CombineModules(
 		weatherPredictionServerModule{},
-		autoinject.AutoInjectModule(new(*Server)).
-			WithAnnotation(WeatherPrediction{}).
-			WithFieldAnnotations(struct {
-				AiClient ai.AiService
-			}{}),
+		autoinject.AutoInjectModule(new(*Server)),
 	)
 }
 
