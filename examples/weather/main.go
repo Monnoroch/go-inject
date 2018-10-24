@@ -30,18 +30,21 @@ func (self *Server) Predict(
 	return &proto.Weather{Weather: weather}, nil
 }
 
+/// Annotation used by the weather prediction server module.
+type WeatherPrediction struct{}
+
 /// A module for providing a configured weather prediction server.
 type WeatherPredictionServerModule struct{}
 
 /// Provider returning the AI service endpoint, to be used by the gRPC client module.
-func (_ WeatherPredictionServerModule) ProvideGrpcEndpoint() string {
-	return "ai-service:80"
+func (_ WeatherPredictionServerModule) ProvideGrpcEndpoint() (string, grpcinject.GrpcClient) {
+	return "ai-service:80", grpcinject.GrpcClient{}
 }
 
 func (_ WeatherPredictionServerModule) ProvideServer(
-	client ai.AiClient,
-) *Server {
-	return &Server{AiClient: client}
+	client ai.AiClient, _ ai.AiService,
+) (*Server, WeatherPrediction) {
+	return &Server{AiClient: client}, WeatherPrediction{}
 }
 
 func main() {
@@ -50,7 +53,9 @@ func main() {
 		ai.AiServiceClientModule{},
 		WeatherPredictionServerModule{},
 	)
-	weatherPredictionServer := injector.MustGet(new(*Server)).(*Server)
+	weatherPredictionServer := injector.MustGet(
+		new(*Server), WeatherPrediction{},
+	).(*Server)
 
 	server := grpc.NewServer()
 	proto.RegisterWeatherPredictionServer(

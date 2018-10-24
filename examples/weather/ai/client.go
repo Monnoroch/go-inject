@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	grpcinject "github.com/monnoroch/go-inject/examples/weather/grpc"
 	aiproto "github.com/monnoroch/go-inject/examples/weather/proto/ai"
 )
 
@@ -33,17 +34,20 @@ func (self *AiClient) AskForWeather(
 	return answer.GetAnswer()
 }
 
+/// Annotation used by the AI service client module.
+type AiService struct{}
+
 /// A module for providing AI service client components.
 type AiServiceClientModule struct{}
 
 func (_ AiServiceClientModule) ProvideGrpcClient(
-	connection *grpc.ClientConn,
-) aiproto.AiClient {
-	return aiproto.NewAiClient(connection)
+	connection *grpc.ClientConn, _ grpcinject.GrpcClient,
+) (aiproto.AiClient, AiService) {
+	return aiproto.NewAiClient(connection), AiService{}
 }
 
 func (_ AiServiceClientModule) ProvideAiClient(
-	client aiproto.AiClient,
-) AiClient {
-	return AiClient{RawAiClient: client}
+	client aiproto.AiClient, _ AiService,
+) (AiClient, AiService) {
+	return AiClient{RawAiClient: client}, AiService{}
 }
