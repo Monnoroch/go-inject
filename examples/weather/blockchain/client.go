@@ -48,13 +48,21 @@ type blockchainServiceClientModule struct{}
 
 func (_ blockchainServiceClientModule) ProvideCachedGrpcClient(
 	connection *grpc.ClientConn, _ BlockchainService,
+	develClient develBlockchainClient, _ private,
+	develInstance bool, _ BlockchainService,
 ) (blockchainproto.BlockchainClient, private) {
-	return blockchainproto.NewBlockchainClient(connection), private{}
+	if develInstance {
+		return develClient, private{}
+	} else {
+		return blockchainproto.NewBlockchainClient(connection), private{}
+	}
 }
 
 func BlockchainServiceClientModule() inject.Module {
 	return inject.CombineModules(
 		blockchainServiceClientModule{},
 		autoinject.AutoInjectModule(new(BlockchainClient)),
+		autoinject.AutoInjectModule(new(develBlockchainClient)).
+			WithAnnotation(private{}),
 	)
 }

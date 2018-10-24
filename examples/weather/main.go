@@ -53,6 +53,10 @@ func (_ weatherPredictionServerModule) ProvideBlockchainGrpcEndpoint() (string, 
 	return "blockchain-service:80", blockchain.BlockchainService{}
 }
 
+func (_ weatherPredictionServerModule) ProvideIsDevelInstance() (bool, blockchain.BlockchainService) {
+	return true, blockchain.BlockchainService{} // TODO: make it into a flag
+}
+
 func (_ weatherPredictionServerModule) ProvideGrpcServer(
 	grpcServer *grpc.Server, _ grpcinject.GrpcServer,
 	weatherPredictionServer *Server, _ autoinject.Auto,
@@ -83,6 +87,6 @@ func main() {
 	server := injector.MustGet(
 		new(*grpc.Server), WeatherPrediction{},
 	).(*grpc.Server)
-	listener, _ := net.Listen("tcp", ":80")
+	listener, _ := net.Listen("tcp", ":10080")
 	server.Serve(listener)
 }
