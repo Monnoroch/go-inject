@@ -37,17 +37,20 @@ func (self *AiClient) AskForWeather(
 /// Annotation used by the AI service client module.
 type AiService struct{}
 
+/// Annotation for private providers.
+type private struct{}
+
 /// A module for providing AI service client components.
 type AiServiceClientModule struct{}
 
 func (_ AiServiceClientModule) ProvideCachedGrpcClient(
 	connection *grpc.ClientConn, _ grpcinject.GrpcClient,
-) (aiproto.AiClient, AiService) {
-	return aiproto.NewAiClient(connection), AiService{}
+) (aiproto.AiClient, private) {
+	return aiproto.NewAiClient(connection), private{}
 }
 
 func (_ AiServiceClientModule) ProvideAiClient(
-	client aiproto.AiClient, _ AiService,
+	client aiproto.AiClient, _ private,
 ) (AiClient, AiService) {
 	return AiClient{RawAiClient: client}, AiService{}
 }
