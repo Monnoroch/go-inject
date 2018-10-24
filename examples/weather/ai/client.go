@@ -36,6 +36,12 @@ func (self *AiClient) AskForWeather(
 	return answer.GetAnswer()
 }
 
+func (self AiClient) ProvideAutoInjectAnnotations() interface{} {
+	return struct {
+		RawAiClient private
+	}{}
+}
+
 /// Annotation used by the AI service client module.
 type AiService struct{}
 
@@ -54,9 +60,6 @@ func (_ aiServiceClientModule) ProvideCachedGrpcClient(
 func AiServiceClientModule() inject.Module {
 	return inject.CombineModules(
 		aiServiceClientModule{},
-		autoinject.AutoInjectModule(new(AiClient)).
-			WithFieldAnnotations(struct {
-				RawAiClient private
-			}{}),
+		autoinject.AutoInjectModule(new(AiClient)),
 	)
 }
