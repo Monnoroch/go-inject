@@ -87,6 +87,6 @@ func main() {
 	server := injector.MustGet(
 		new(*grpc.Server), WeatherPrediction{},
 	).(*grpc.Server)
-	listener, _ := net.Listen("tcp", ":10080")
+	listener, _ := net.Listen("tcp", ":80")
 	server.Serve(listener)
 }

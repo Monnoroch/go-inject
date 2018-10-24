@@ -47,14 +47,14 @@ type private struct{}
 type blockchainServiceClientModule struct{}
 
 func (_ blockchainServiceClientModule) ProvideCachedGrpcClient(
-	connection *grpc.ClientConn, _ BlockchainService,
+	connection func() *grpc.ClientConn, _ BlockchainService,
 	develClient develBlockchainClient, _ private,
 	develInstance bool, _ BlockchainService,
 ) (blockchainproto.BlockchainClient, private) {
 	if develInstance {
 		return develClient, private{}
 	} else {
-		return blockchainproto.NewBlockchainClient(connection), private{}
+		return blockchainproto.NewBlockchainClient(connection()), private{}
 	}
 }
 
