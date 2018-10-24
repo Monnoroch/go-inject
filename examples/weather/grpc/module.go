@@ -16,3 +16,13 @@ func (_ GrpcClientModule) ProvideConnection(
 	connection, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	return connection, GrpcClient{}, err
 }
+
+/// Annotation used by the gRPC server module.
+type GrpcServer struct{}
+
+/// A module for providing gRPC server components.
+type GrpcServerModule struct{}
+
+func (_ GrpcServerModule) ProvideServer() (*grpc.Server, GrpcServer) {
+	return grpc.NewServer(), GrpcServer{}
+}

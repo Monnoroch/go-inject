@@ -47,21 +47,27 @@ func (_ WeatherPredictionServerModule) ProvideServer(
 	return &Server{AiClient: client}, WeatherPrediction{}
 }
 
+func (_ WeatherPredictionServerModule) ProvideGrpcServer(
+	grpcServer *grpc.Server, _ grpcinject.GrpcServer,
+	weatherPredictionServer *Server, _ WeatherPrediction,
+) (*grpc.Server, WeatherPrediction) {
+	proto.RegisterWeatherPredictionServer(
+		grpcServer,
+		weatherPredictionServer,
+	)
+	return grpcServer, WeatherPrediction{}
+}
+
 func main() {
 	injector, _ := inject.InjectorOf(
+		grpcinject.GrpcServerModule{},
 		grpcinject.GrpcClientModule{},
 		ai.AiServiceClientModule{},
 		WeatherPredictionServerModule{},
 	)
-	weatherPredictionServer := injector.MustGet(
-		new(*Server), WeatherPrediction{},
-	).(*Server)
-
-	server := grpc.NewServer()
-	proto.RegisterWeatherPredictionServer(
-		server,
-		weatherPredictionServer,
-	)
+	server := injector.MustGet(
+		new(*grpc.Server), WeatherPrediction{},
+	).(*grpc.Server)
 	listener, _ := net.Listen("tcp", ":80")
 	server.Serve(listener)
 }
