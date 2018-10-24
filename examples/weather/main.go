@@ -29,13 +29,29 @@ func (self *Server) Predict(
 	return &proto.Weather{Weather: weather}, nil
 }
 
+func AiServiceEndpoint() string {
+	return "ai-service:80"
+}
+
+func NewAiServiceGrpcConnection() *grpc.ClientConn {
+	connection, _ := grpc.Dial(AiServiceEndpoint(), grpc.WithInsecure())
+	return connection
+}
+
+func NewGrpcAiClient() aiproto.AiClient {
+	return aiproto.NewAiClient(NewAiServiceGrpcConnection())
+}
+
+func NewAiClient() ai.AiClient {
+	return ai.AiClient{RawAiClient: NewGrpcAiClient()}
+}
+
+func NewServer() *Server {
+	return &Server{AiClient: NewAiClient()}
+}
+
 func main() {
-	aiConnection, _ := grpc.Dial("ai-service:80", grpc.WithInsecure())
-	weatherPredictionServer := &Server{
-		AiClient: ai.AiClient{
-			RawAiClient: aiproto.NewAiClient(aiConnection),
-		},
-	}
+	weatherPredictionServer := NewServer()
 	server := grpc.NewServer()
 	proto.RegisterWeatherPredictionServer(
 		server,
