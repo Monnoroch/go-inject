@@ -28,6 +28,7 @@ func TestNextAnonimousTypeWithInjector(t *testing.T) {
 
 	testAnnotation1 := NextAnonimousAnnotatation()
 	testAnnotation2 := NextAnonimousAnnotatation()
+	require.NotEqual(t, testAnnotation1, testAnnotation2)
 	injector, err := inject.InjectorOf(
 		rewrite.RewriteAnnotations(testDynamicModule{value: testValue1}, rewrite.AnnotationsMapping{
 			private{}: testAnnotation1,
